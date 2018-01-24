@@ -1,10 +1,11 @@
+#ifndef PERMUTOHEDRAL_CU
+#define PERMUTOHEDRAL_CU
 
 #define BLOCK_SIZE 256
 
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <string>
-#include "cuda_memory.h"
 #include "cuda_code_indexing.h"
 
 #include <sys/time.h>
@@ -301,7 +302,7 @@ void filter(float *im, float *ref, int n) {
 	MirroredArray<float> values(im, n*vd);
 
 	float *newValues;
-	allocateCudaMemory((void**)&(newValues), n*(pd+1)*(vd+1)*sizeof(float));
+    cudaMalloc((void**)&(newValues), n*(pd+1)*(vd+1)*sizeof(float));
 	cudaMemset((void *)newValues, 0, n*(pd+1)*(vd+1)*sizeof(float));
 
 	HashTable<pd, vd> table(n*(pd+1));
@@ -355,11 +356,11 @@ void filter(float *im, float *ref, int n) {
 	printf("%s: %3.3f ms\n", "Slice", (t[6].tv_sec - t[4].tv_sec)*1000.0 + (t[6].tv_usec - t[5].tv_usec)/1000.0);
 	printf("%s: %3.3f ms\n", "Free", (t[7].tv_sec - t[6].tv_sec)*1000.0 + (t[7].tv_usec - t[6].tv_usec)/1000.0);
 
-	printf("Total GPU memory usage: %u bytes\n", (unsigned int)GPU_MEMORY_ALLOCATION);
+	//printf("Total GPU memory usage: %u bytes\n", (unsigned int)GPU_MEMORY_ALLOCATION);
 
 }
 
 
-
+#endif //PERMUTOHEDRAL_CU
 
 

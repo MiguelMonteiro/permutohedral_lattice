@@ -4,20 +4,22 @@
 
 #ifndef PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
 #define PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
+#include <memory>
+#include <cstring>
 
-class HashTablePermutohedral {
+class HashTable {
 public:
     /* Constructor
-     *  kd_: the dimensionality of the position vectors on the hyperplane.
+     *  pd_: the dimensionality of the position vectors on the hyperplane.
      *  vd_: the dimensionality of the value vectors
      */
-    HashTablePermutohedral(int kd_, int vd_) : kd(kd_), vd(vd_) {
+    HashTable(int pd_, int vd_) : pd(pd_), vd(vd_) {
         capacity = 1 << 15;
         filled = 0;
         entries = new Entry[capacity];
-        keys = new short[kd * capacity / 2];
+        keys = new short[pd * capacity / 2];
         values = new float[vd * capacity / 2];
-        memset(values, 0, sizeof(float) * vd * capacity / 2);
+        std::memset(values, 0, sizeof(float) * vd * capacity / 2);
     }
 
     // Returns the number of vectors stored.
@@ -35,7 +37,7 @@ public:
      *  create: a flag specifying whether an entry should be created,
      *          should an entry with the given key not found.
      */
-    int lookupOffset(short *key, size_t h, bool create = true) {
+    int lookupOffset(const short *key, size_t h, bool create = true) {
 
         // Double hash table size if necessary
         if (filled >= (capacity / 2) - 1) { grow(); }
@@ -47,9 +49,9 @@ public:
             if (e.keyIdx == -1) {
                 if (!create) return -1; // Return not found.
                 // need to create an entry. Store the given key.
-                for (int i = 0; i < kd; i++)
-                    keys[filled * kd + i] = key[i];
-                e.keyIdx = filled * kd;
+                for (int i = 0; i < pd; i++)
+                    keys[filled * pd + i] = key[i];
+                e.keyIdx = filled * pd;
                 e.valueIdx = filled * vd;
                 entries[h] = e;
                 filled++;
@@ -58,7 +60,7 @@ public:
 
             // check if the cell has a matching key
             bool match = true;
-            for (int i = 0; i < kd && match; i++)
+            for (int i = 0; i < pd && match; i++)
                 match = keys[e.keyIdx + i] == key[i];
             if (match)
                 return e.valueIdx;
@@ -85,7 +87,7 @@ public:
     /* Hash function used in this implementation. A simple base conversion. */
     size_t hash(const short *key) {
         size_t k = 0;
-        for (int i = 0; i < kd; i++) {
+        for (int i = 0; i < pd; i++) {
             k += key[i];
             k *= 2531011;
         }
@@ -102,14 +104,14 @@ private:
 
         // Migrate the value vectors.
         float *newValues = new float[vd * capacity / 2];
-        memset(newValues, 0, sizeof(float) * vd * capacity / 2);
-        memcpy(newValues, values, sizeof(float) * vd * filled);
+        std::memset(newValues, 0, sizeof(float) * vd * capacity / 2);
+        std::memcpy(newValues, values, sizeof(float) * vd * filled);
         delete[] values;
         values = newValues;
 
         // Migrate the key vectors.
-        short *newKeys = new short[kd * capacity / 2];
-        memcpy(newKeys, keys, sizeof(short) * kd * filled);
+        short *newKeys = new short[pd * capacity / 2];
+        std::memcpy(newKeys, keys, sizeof(short) * pd * filled);
         delete[] keys;
         keys = newKeys;
 
@@ -141,7 +143,7 @@ private:
     float *values;
     Entry *entries;
     size_t capacity, filled;
-    int kd, vd;
+    int pd, vd;
 };
 
 class PermutohedralLattice {
@@ -183,7 +185,7 @@ protected:
 
 public:
 
-    HashTablePermutohedral hashTable;
+    HashTable hashTable;
 
     PermutohedralLattice(int d_, int vd_, int N_);
 

@@ -1,4 +1,6 @@
-#include "cuda_memory.h"
+#ifndef HASH_TABLE_CU_H
+#define HASH_TABLE_CU_H
+
 #include "cuda_code_indexing.h"
 
 
@@ -12,13 +14,13 @@ public:
 
 	HashTable(int capacity_): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
 
-		allocateCudaMemory((void**)&values, capacity*(vd+1)*sizeof(float));
+        cudaMalloc((void**)&values, capacity*(vd+1)*sizeof(float));
 		cudaMemset((void *)values, 0, capacity*(vd+1)*sizeof(float));
 
-		allocateCudaMemory((void **)&entries, capacity*2*sizeof(int));
+        cudaMalloc((void **)&entries, capacity*2*sizeof(int));
 		cudaMemset((void *)entries, -1, capacity*2*sizeof(int));
 
-		allocateCudaMemory((void **)&keys, capacity*pd*sizeof(signed short));
+        cudaMalloc((void **)&keys, capacity*pd*sizeof(signed short));
 		cudaMemset((void *)keys, 0, capacity*pd*sizeof(signed short));
 	}
 
@@ -107,7 +109,7 @@ public:
 	}
 };
 
-
+#endif //HASH_TABLE_CU_H
 
 
 

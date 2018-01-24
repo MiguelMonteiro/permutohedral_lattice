@@ -4,7 +4,7 @@
 #include <cmath>
 #include <memory>
 #include <iostream>
-
+#include <memory>
 #include "PermutohedralLattice.h"
 
 std::unique_ptr<int[]> PermutohedralLattice::compute_canonical_simplex() {

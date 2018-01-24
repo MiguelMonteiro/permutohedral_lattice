@@ -1,4 +1,3 @@
-
 #ifndef CUDA_MEMORY_H
 #define CUDA_MEMORY_H
 

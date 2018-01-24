@@ -2,21 +2,14 @@ cmake_minimum_required(VERSION 3.9)
 
 project(permutohedral_lattice LANGUAGES CXX CUDA)
 
+#include_directories(/Developer/NVIDIA/CUDA-9.1/include)
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CUDA_STANDARD 11)
-set(CUDA_SEPARABLE_COMPILATION ON)
 
 add_executable(bilateral_cpu bilateral_cpu.cpp PermutohedralLattice.cpp PermutohedralLattice.h CImg.h)
-if(UNIX AND NOT APPLE)
-    set(LINUX TRUE)
-endif()
-if (LINUX)
-    find_package(Threads REQUIRED)
-    target_link_libraries(bilateral_cpu PRIVATE ${CMAKE_THREAD_LIBS_INIT})
-endif ()
 
+#include(CTest)
 
-
+list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 add_library(permutohedral STATIC permutohedral.cu hash_table.cu MirroredArray.h cuda_memory.h cuda_code_indexing.h)
 
 # Request that particles be built with -std=c++11
@@ -29,7 +22,7 @@ target_compile_features(permutohedral PUBLIC cxx_std_11)
 # could be called by other libraries and executables
 set_target_properties(permutohedral PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-#include_directories(/Developer/NVIDIA/CUDA-9.1/include)
+include_directories(/Developer/NVIDIA/CUDA-9.1/include)
 add_executable(bilateral_gpu bilateral_gpu.cpp CImg.h)
 
 set_property(TARGET bilateral_gpu PROPERTY CUDA_SEPARABLE_COMPILATION ON)
