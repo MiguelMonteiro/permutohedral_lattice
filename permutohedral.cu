@@ -277,8 +277,9 @@ __declspec(dllexport)
 #endif
 #endif
 
+
 template<int vd, int pd>
-void filter(float *im, float *ref, int n) {
+void filter_(float *im, float *ref, int n) {
 
 	timeval t[9];
 	gettimeofday(t+0, NULL);
@@ -358,6 +359,17 @@ void filter(float *im, float *ref, int n) {
 
 	//printf("Total GPU memory usage: %u bytes\n", (unsigned int)GPU_MEMORY_ALLOCATION);
 
+}
+
+#ifdef LIBRARY
+extern "C++"
+#ifdef WIN32
+__declspec(dllexport)
+#endif
+#endif
+
+void filter(float *im, float *ref, int n){
+    filter_<5,3>(im, ref, n);
 }
 
 

@@ -6,8 +6,7 @@
 
 
 //extern "C++" template<int pd, int vd> void permutohedral::filter(float *values, float *positions, int n);
-extern "C++" template<int pd, int vd> void filter(float *values, float *positions, int n);
-
+extern "C++" void filter(float *values, float *positions, int n);
 
 int main(int argc, char **argv) {
 	if (argc < 5) {
@@ -64,7 +63,7 @@ int main(int argc, char **argv) {
 	// Filter the image with respect to the position vectors.
 	printf("Calling filter...\n");
 	std:clock_t begin = std::clock();
-    filter<5, 3>(flat, positions, image.width() * image.height());
+    filter(flat, positions, image.width() * image.height());
 	std::clock_t end = std::clock();
 	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 	printf("%f seconds\n", elapsed_secs);
