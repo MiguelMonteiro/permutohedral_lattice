@@ -15,336 +15,336 @@
 #include "cuda_code_indexing.h"
 
 struct MatrixEntry {
-	int index;
-	float weight;
+    int index;
+    float weight;
 };
 
 template<int pd, int vd>
-__global__ static void createMatrix(const int n, const float *positions, const float *scaleFactor, MatrixEntry *matrix, HashTable<pd, vd> table) {
+__global__ static void createMatrix(const int n, const float *positions, const float *scaleFactor, MatrixEntry *matrix,
+                                    HashTable<pd, vd> table) {
 
-	const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-	if(idx >= n)
-		return;
-
-
-	float elevated[pd+1];
-	const float *position = positions + idx*pd;
-	int rem0[pd+1];
-	int rank[pd+1];
+    const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= n)
+        return;
 
 
-	float sm = 0;
-	for (int i = pd; i > 0; i--) {
-		float cf = position[i - 1] * scaleFactor[i - 1];
-		elevated[i] = sm - i * cf;
-		sm += cf;
-	}
-	elevated[0] = sm;
+    float elevated[pd + 1];
+    const float *position = positions + idx * pd;
+    int rem0[pd + 1];
+    int rank[pd + 1];
 
 
-	// find the closest zero-colored lattice point
+    float sm = 0;
+    for (int i = pd; i > 0; i--) {
+        float cf = position[i - 1] * scaleFactor[i - 1];
+        elevated[i] = sm - i * cf;
+        sm += cf;
+    }
+    elevated[0] = sm;
 
-	// greedily search for the closest zero-colored lattice point
-	signed short sum = 0;
-	for (int i = 0; i <= pd; i++) {
-		float v = elevated[i]*(1.0f/(pd+1));
-		float up = ceilf(v) * (pd+1);
-		float down = floorf(v) * (pd+1);
-		if (up - elevated[i] < elevated[i] - down) {
-			rem0[i] = (signed short)up;
-		} else {
-			rem0[i] = (signed short)down;
-		}
-		sum += rem0[i];
-	}
-	sum /= pd+1;
 
-	// sort differential to find the permutation between this simplex and the canonical one
-	for (int i = 0; i <= pd; i++) {
-		rank[i] = 0;
-		for (int j = 0; j <= pd; j++) {
-			if (elevated[i] - rem0[i] < elevated[j] - rem0[j] ||
-					(elevated[i] - rem0[i] == elevated[j] - rem0[j] && i > j)) {
-				rank[i]++;
-			}
-		}
-	}
+    // find the closest zero-colored lattice point
 
-	if (sum > 0) { // sum too large, need to bring down the ones with the smallest differential
-		for (int i = 0; i <= pd; i++) {
-			if (rank[i] >= pd + 1 - sum) {
-				rem0[i] -= pd+1;
-				rank[i] += sum - (pd+1);
-			} else {
-				rank[i] += sum;
-			}
-		}
-	} else if (sum < 0) { // sum too small, need to bring up the ones with largest differential
-		for (int i = 0; i <= pd; i++) {
-			if (rank[i] < -sum) {
-				rem0[i] += pd+1;
-				rank[i] += (pd+1) + sum;
-			} else {
-				rank[i] += sum;
-			}
-		}
-	}
+    // greedily search for the closest zero-colored lattice point
+    signed short sum = 0;
+    for (int i = 0; i <= pd; i++) {
+        float v = elevated[i] * (1.0f / (pd + 1));
+        float up = ceilf(v) * (pd + 1);
+        float down = floorf(v) * (pd + 1);
+        if (up - elevated[i] < elevated[i] - down) {
+            rem0[i] = (signed short) up;
+        } else {
+            rem0[i] = (signed short) down;
+        }
+        sum += rem0[i];
+    }
+    sum /= pd + 1;
 
-	float barycentric[pd+2]{0};
+    // sort differential to find the permutation between this simplex and the canonical one
+    for (int i = 0; i <= pd; i++) {
+        rank[i] = 0;
+        for (int j = 0; j <= pd; j++) {
+            if (elevated[i] - rem0[i] < elevated[j] - rem0[j] ||
+                (elevated[i] - rem0[i] == elevated[j] - rem0[j] && i > j)) {
+                rank[i]++;
+            }
+        }
+    }
 
-	// turn delta into barycentric coords
+    if (sum > 0) { // sum too large, need to bring down the ones with the smallest differential
+        for (int i = 0; i <= pd; i++) {
+            if (rank[i] >= pd + 1 - sum) {
+                rem0[i] -= pd + 1;
+                rank[i] += sum - (pd + 1);
+            } else {
+                rank[i] += sum;
+            }
+        }
+    } else if (sum < 0) { // sum too small, need to bring up the ones with largest differential
+        for (int i = 0; i <= pd; i++) {
+            if (rank[i] < -sum) {
+                rem0[i] += pd + 1;
+                rank[i] += (pd + 1) + sum;
+            } else {
+                rank[i] += sum;
+            }
+        }
+    }
 
-	for (int i = 0; i <= pd; i++) {
-		float delta = (elevated[i] - rem0[i]) * (1.0f/(pd+1));
-		barycentric[pd-rank[i]] += delta;
-		barycentric[pd+1-rank[i]] -= delta;
-	}
-	barycentric[0] += 1.0f + barycentric[pd+1];
+    float barycentric[pd + 2]{0};
 
-	short key[pd];
-	for (int color = 0; color <= pd; color++) {
-		// Compute the location of the lattice point explicitly (all but
-		// the last coordinate - it's redundant because they sum to zero)
+    // turn delta into barycentric coords
 
-		for (int i = 0; i < pd; i++) {
-			key[i] = rem0[i] + color;
-			if (rank[i] > pd-color)
-				key[i] -= (pd+1);
-		}
+    for (int i = 0; i <= pd; i++) {
+        float delta = (elevated[i] - rem0[i]) * (1.0f / (pd + 1));
+        barycentric[pd - rank[i]] += delta;
+        barycentric[pd + 1 - rank[i]] -= delta;
+    }
+    barycentric[0] += 1.0f + barycentric[pd + 1];
 
-		MatrixEntry r;
-		r.index = table.insert(key, idx*(pd+1)+color);
-		r.weight = barycentric[color];
-		matrix[idx*(pd+1) + color] = r;
-	}
+    short key[pd];
+    for (int color = 0; color <= pd; color++) {
+        // Compute the location of the lattice point explicitly (all but
+        // the last coordinate - it's redundant because they sum to zero)
+
+        for (int i = 0; i < pd; i++) {
+            key[i] = rem0[i] + color;
+            if (rank[i] > pd - color)
+                key[i] -= (pd + 1);
+        }
+
+        MatrixEntry r;
+        r.index = table.insert(key, idx * (pd + 1) + color);
+        r.weight = barycentric[color];
+        matrix[idx * (pd + 1) + color] = r;
+    }
 
 }
 
 template<int pd, int vd>
 __global__ static void cleanHashTable(int n, MatrixEntry *matrix, HashTable<pd, vd> table) {
 
-	const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
+    const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
 
-	if (idx >= n)
-		return;
+    if (idx >= n)
+        return;
 
-	// find my hash table entry
-	int *e = table.entries + idx;
+    // find my hash table entry
+    int *e = table.entries + idx;
 
-	// Check if I created my own key in the previous phase
-	if (*e >= 0) {
-		// Rehash my key and reset the pointer in order to merge with
-		// any other pixel that created a different entry under the
-		// same key. If the computation was serial this would never
-		// happen, but sometimes race conditions can make the same key
-		// be inserted twice. hashTableRetrieve always returns the
-		// earlier, so it's no problem as long as we rehash now.
-		*e = table.retrieve(table.keys + *e*pd);
-	}
+    // Check if I created my own key in the previous phase
+    if (*e >= 0) {
+        // Rehash my key and reset the pointer in order to merge with
+        // any other pixel that created a different entry under the
+        // same key. If the computation was serial this would never
+        // happen, but sometimes race conditions can make the same key
+        // be inserted twice. hashTableRetrieve always returns the
+        // earlier, so it's no problem as long as we rehash now.
+        *e = table.retrieve(table.keys + *e * pd);
+    }
 }
 
 template<int pd, int vd>
 __global__ static void splatCache(const int n, float *values, MatrixEntry *matrix, HashTable<pd, vd> table) {
 
-	const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-	const int threadId = threadIdx.x;
-	const int color = blockIdx.y;
-	const bool outOfBounds = (idx>=n);
+    const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    const int threadId = threadIdx.x;
+    const int color = blockIdx.y;
+    const bool outOfBounds = (idx >= n);
 
-	__shared__ int sharedOffsets[BLOCK_SIZE];
-	__shared__ float sharedValues[BLOCK_SIZE*(vd+1)];
-	int myOffset = -1;
-	float *myValue = sharedValues + threadId*(vd+1);
+    __shared__ int sharedOffsets[BLOCK_SIZE];
+    __shared__ float sharedValues[BLOCK_SIZE * vd];
+    int myOffset = -1;
+    float *myValue = sharedValues + threadId * vd;
 
-	if (!outOfBounds) {
+    if (!outOfBounds) {
 
-		float *value = values + idx*vd;
+        float *value = values + idx * (vd - 1);
 
-		MatrixEntry r = matrix[idx*(pd+1)+color];
+        MatrixEntry r = matrix[idx * (pd + 1) + color];
 
-		// convert the matrix entry from a pointer into the entries array to a pointer into the keys/values array
-		matrix[idx*(pd+1)+color].index = r.index = table.entries[r.index];
-		// record the offset into the keys/values array in shared space
-		myOffset = sharedOffsets[threadId] = r.index*(vd+1);
+        // convert the matrix entry from a pointer into the entries array to a pointer into the keys/values array
+        matrix[idx * (pd + 1) + color].index = r.index = table.entries[r.index];
+        // record the offset into the keys/values array in shared space
+        myOffset = sharedOffsets[threadId] = r.index * vd;
 
-		for (int j = 0; j < vd; j++) {
-			myValue[j] = value[j]*r.weight;
-		}
-		myValue[vd] = r.weight;
+        for (int j = 0; j < vd - 1; j++) {
+            myValue[j] = value[j] * r.weight;
+        }
+        myValue[vd - 1] = r.weight;
 
-	} else {
-		sharedOffsets[threadId] = -1;
-	}
+    } else {
+        sharedOffsets[threadId] = -1;
+    }
 
-	__syncthreads();
+    __syncthreads();
 
-	// am I the first thread in this block to care about this key?
-	if (outOfBounds)
-		return;
+    // am I the first thread in this block to care about this key?
+    if (outOfBounds)
+        return;
 
-	for (int i = 0; i < BLOCK_SIZE; i++) {
-		if (i < threadId) {
-			if (myOffset == sharedOffsets[i]) {
-				// somebody else with higher priority cares about this key
-				return;
-			}
-		} else if (i > threadId) {
-			if (myOffset == sharedOffsets[i]) {
-				// someone else with lower priority cares about this key, accumulate it into mine
-				for (int j = 0; j <= vd; j++) {
-					sharedValues[threadId*(vd+1) + j] += sharedValues[i*(vd+1) + j];
-				}
-			}
-		}
-	}
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        if (i < threadId) {
+            if (myOffset == sharedOffsets[i]) {
+                // somebody else with higher priority cares about this key
+                return;
+            }
+        } else if (i > threadId) {
+            if (myOffset == sharedOffsets[i]) {
+                // someone else with lower priority cares about this key, accumulate it into mine
+                for (int j = 0; j < vd; j++) {
+                    sharedValues[threadId * vd + j] += sharedValues[i * vd + j];
+                }
+            }
+        }
+    }
 
-	// only the threads with something to write to main memory are still going
-	float *val = table.values + myOffset;
-	for (int j = 0; j <= vd; j++) {
-		atomicAdd(val+j, myValue[j]);
-	}
+    // only the threads with something to write to main memory are still going
+    float *val = table.values + myOffset;
+    for (int j = 0; j < vd; j++) {
+        atomicAdd(val + j, myValue[j]);
+    }
 }
 
 template<int pd, int vd>
 __global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int color, HashTable<pd, vd> table) {
 
-	const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
-	if (idx >= n)
-		return;
+    const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
+    if (idx >= n)
+        return;
 
-	// Check if I'm valid
-	if (matrix[idx].index != idx)
-		return;
-
-
-	// find my key and the keys of my neighbors
-	short myKey[pd+1];
-	short np[pd+1];
-	short nm[pd+1];
+    // Check if I'm valid
+    if (matrix[idx].index != idx)
+        return;
 
 
-	for (int i = 0; i < pd; i++) {
-		myKey[i] = table.keys[idx*pd+i];
-		np[i] = myKey[i]+1;
-		nm[i] = myKey[i]-1;
-	}
-	np[color] -= pd+1;
-	nm[color] += pd+1;
+    // find my key and the keys of my neighbors
+    short myKey[pd + 1];
+    short np[pd + 1];
+    short nm[pd + 1];
 
 
-	int offNp = table.retrieve(np);
-	int offNm = table.retrieve(nm);
+    for (int i = 0; i < pd; i++) {
+        myKey[i] = table.keys[idx * pd + i];
+        np[i] = myKey[i] + 1;
+        nm[i] = myKey[i] - 1;
+    }
+    np[color] -= pd + 1;
+    nm[color] += pd + 1;
 
-	float *valMe = table.values + (vd+1)*idx;
-	float *valNp = table.values + (vd+1)*offNp;
-	float *valNm = table.values + (vd+1)*offNm;
-	float *valOut = newValues + (vd+1)*idx;
 
-	for (int i = 0; i <= vd; i++)
-		valOut[i] = 0.25 * valNp[i] + 0.5* valMe[i] + 0.25*valNm[i];
+    int offNp = table.retrieve(np);
+    int offNm = table.retrieve(nm);
+
+    float *valMe = table.values + vd * idx;
+    float *valNp = table.values + vd * offNp;
+    float *valNm = table.values + vd * offNm;
+    float *valOut = newValues + vd * idx;
+
+    for (int i = 0; i < vd; i++)
+        valOut[i] = 0.25 * valNp[i] + 0.5 * valMe[i] + 0.25 * valNm[i];
 }
 
 template<int pd, int vd>
 __global__ static void slice(const int n, float *values, MatrixEntry *matrix, HashTable<pd, vd> table) {
 
-	const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-	if(idx >= n)
-		return;
+    const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= n)
+        return;
 
-	float value[vd]{0};
-	float weight = 0;
+    float value[vd-1]{0};
+    float weight = 0;
 
-	for (int i = 0; i <= pd; i++) {
-		MatrixEntry r = matrix[idx*(pd+1) + i];
-		float *val = table.values + r.index*(vd+1);
-		for (int j = 0; j < vd; j++) {
-			value[j] += r.weight*val[j];
-		}
-		weight += r.weight*val[vd];
-	}
+    for (int i = 0; i <= pd; i++) {
+        MatrixEntry r = matrix[idx * (pd + 1) + i];
+        float *val = table.values + r.index * vd;
+        for (int j = 0; j < vd - 1; j++) {
+            value[j] += r.weight * val[j];
+        }
+        weight += r.weight * val[vd - 1];
+    }
 
-	weight = 1.0f/weight;
-	for (int j = 0; j < vd; j++)
-		values[idx*vd + j] = value[j]*weight;
+    weight = 1.0f / weight;
+    for (int j = 0; j < vd - 1; j++)
+        values[idx * (vd - 1) + j] = value[j] * weight;
 
 }
-
 
 
 template<int pd, int vd>
 void filter_(float *im, float *ref, int n) {
 
-	timeval t[9];
-	gettimeofday(t+0, NULL);
+    timeval t[9];
+    gettimeofday(t + 0, NULL);
 
-	if(n >= 65535 * BLOCK_SIZE){
-		printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
-		return;
-	}
+    if (n >= 65535 * BLOCK_SIZE) {
+        printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
+        return;
+    }
 
-	MirroredArray<float> scaleFactor(static_cast<size_t>(pd));
+    MirroredArray<float> scaleFactor(static_cast<size_t>(pd));
 
-	float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
-	for (int i = 0; i < pd; i++) {
-		scaleFactor.host[i] = 1.0f / (sqrtf((float) (i + 1) * (i + 2))) * inv_std_dev;
-	}
-	scaleFactor.hostToDevice();
-
-
-	MirroredArray<float> positions(ref, static_cast<size_t>(n * pd));
-	MirroredArray<MatrixEntry> matrix(static_cast<size_t>(n * (pd + 1)));
-	MirroredArray<float> values(im, static_cast<size_t>(n * vd));
-
-	float *newValues;
-    cudaMalloc((void**)&(newValues), n*(pd+1)*(vd+1)*sizeof(float));
-	cudaMemset((void *)newValues, 0, n*(pd+1)*(vd+1)*sizeof(float));
-
-	HashTable<pd, vd> table(n*(pd+1));
-
-	dim3 blocks((n-1)/BLOCK_SIZE+1, 1, 1);
-	dim3 blockSize(BLOCK_SIZE, 1, 1);
-
-	gettimeofday(t+1, NULL);
+    float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
+    for (int i = 0; i < pd; i++) {
+        scaleFactor.host[i] = 1.0f / (sqrtf((float) (i + 1) * (i + 2))) * inv_std_dev;
+    }
+    scaleFactor.hostToDevice();
 
 
-	createMatrix<pd, vd><<<blocks, blockSize>>>(n, positions.device, scaleFactor.device, matrix.device, table);
-	gettimeofday(t+2, NULL);
+    MirroredArray<float> positions(ref, static_cast<size_t>(n * pd));
+    MirroredArray<MatrixEntry> matrix(static_cast<size_t>(n * (pd + 1)));
+    MirroredArray<float> values(im, static_cast<size_t>(n * (vd-1)));
 
-	// fix duplicate hash table entries
-	int cleanBlockSize = 32;
-	dim3 cleanBlocks((n-1)/cleanBlockSize+1, 2*(pd+1), 1);
-	cleanHashTable<pd, vd><<<cleanBlocks, cleanBlockSize>>>(2*n*(pd+1), matrix.device, table);
-	gettimeofday(t+3, NULL);
+    float *newValues;
+    cudaMalloc((void **) &(newValues), n * (pd + 1) * vd * sizeof(float));
+    cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(float));
 
-	// splat splits by color, so extend the y coordinate to our blocks to represent that
-	blocks.y = pd+1;
-	splatCache<pd, vd><<<blocks, blockSize>>>(n, values.device, matrix.device, table);
-	gettimeofday(t+4, NULL);
+    HashTable<pd, vd> table(n * (pd + 1));
 
-	for (int color = 0; color <= pd; color++) {
-		blur<pd, vd><<<cleanBlocks, cleanBlockSize>>>(n*(pd+1), newValues, matrix.device, color, table);
-		std::swap(table.values, newValues);
-	}
-	gettimeofday(t+5, NULL);
+    dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
+    dim3 blockSize(BLOCK_SIZE, 1, 1);
+
+    gettimeofday(t + 1, NULL);
 
 
-	blockSize.y = 1;
-	slice<pd, vd><<<blocks, blockSize>>>(n, values.device, matrix.device, table);
-	gettimeofday(t+6, NULL);
+    createMatrix<pd, vd><<<blocks, blockSize>>>(n, positions.device, scaleFactor.device, matrix.device, table);
+    gettimeofday(t + 2, NULL);
 
-	values.deviceToHost();
-	cudaFree(newValues);
-	gettimeofday(t+7, NULL);
+    // fix duplicate hash table entries
+    int cleanBlockSize = 32;
+    dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
+    cleanHashTable<pd, vd><<<cleanBlocks, cleanBlockSize>>>(2 * n * (pd + 1), matrix.device, table);
+    gettimeofday(t + 3, NULL);
 
-	double total = (t[7].tv_sec - t[0].tv_sec)*1000.0 + (t[7].tv_usec - t[0].tv_usec)/1000.0;
-	printf("Total time: %3.3f ms\n", total);
-	printf("%s: %3.3f ms\n", "Init", (t[1].tv_sec - t[0].tv_sec)*1000.0 + (t[1].tv_usec - t[0].tv_usec)/1000.0);
-	printf("%s: %3.3f ms\n", "Create", (t[2].tv_sec - t[1].tv_sec)*1000.0 + (t[2].tv_usec - t[1].tv_usec)/1000.0);
-	printf("%s: %3.3f ms\n", "Clean", (t[3].tv_sec - t[2].tv_sec)*1000.0 + (t[3].tv_usec - t[2].tv_usec)/1000.0);
-	printf("%s: %3.3f ms\n", "Splat", (t[4].tv_sec - t[3].tv_sec)*1000.0 + (t[4].tv_usec - t[3].tv_usec)/1000.0);
-	printf("%s: %3.3f ms\n", "Blur", (t[5].tv_sec - t[4].tv_sec)*1000.0 + (t[5].tv_usec - t[4].tv_usec)/1000.0);
-	printf("%s: %3.3f ms\n", "Slice", (t[6].tv_sec - t[4].tv_sec)*1000.0 + (t[6].tv_usec - t[5].tv_usec)/1000.0);
-	printf("%s: %3.3f ms\n", "Free", (t[7].tv_sec - t[6].tv_sec)*1000.0 + (t[7].tv_usec - t[6].tv_usec)/1000.0);
+    // splat splits by color, so extend the y coordinate to our blocks to represent that
+    blocks.y = pd + 1;
+    splatCache<pd, vd><<<blocks, blockSize>>>(n, values.device, matrix.device, table);
+    gettimeofday(t + 4, NULL);
+
+    for (int color = 0; color <= pd; color++) {
+        blur<pd, vd><<<cleanBlocks, cleanBlockSize>>>(n * (pd + 1), newValues, matrix.device, color, table);
+        std::swap(table.values, newValues);
+    }
+    gettimeofday(t + 5, NULL);
+
+
+    blockSize.y = 1;
+    slice<pd, vd><<< blocks, blockSize>>>(n, values.device, matrix.device, table);
+    gettimeofday(t + 6, NULL);
+
+    values.deviceToHost();
+    cudaFree(newValues);
+    gettimeofday(t + 7, NULL);
+
+    double total = (t[7].tv_sec - t[0].tv_sec) * 1000.0 + (t[7].tv_usec - t[0].tv_usec) / 1000.0;
+    printf("Total time: %3.3f ms\n", total);
+    printf("%s: %3.3f ms\n", "Init", (t[1].tv_sec - t[0].tv_sec) * 1000.0 + (t[1].tv_usec - t[0].tv_usec) / 1000.0);
+    printf("%s: %3.3f ms\n", "Create", (t[2].tv_sec - t[1].tv_sec) * 1000.0 + (t[2].tv_usec - t[1].tv_usec) / 1000.0);
+    printf("%s: %3.3f ms\n", "Clean", (t[3].tv_sec - t[2].tv_sec) * 1000.0 + (t[3].tv_usec - t[2].tv_usec) / 1000.0);
+    printf("%s: %3.3f ms\n", "Splat", (t[4].tv_sec - t[3].tv_sec) * 1000.0 + (t[4].tv_usec - t[3].tv_usec) / 1000.0);
+    printf("%s: %3.3f ms\n", "Blur", (t[5].tv_sec - t[4].tv_sec) * 1000.0 + (t[5].tv_usec - t[4].tv_usec) / 1000.0);
+    printf("%s: %3.3f ms\n", "Slice", (t[6].tv_sec - t[4].tv_sec) * 1000.0 + (t[6].tv_usec - t[5].tv_usec) / 1000.0);
+    printf("%s: %3.3f ms\n", "Free", (t[7].tv_sec - t[6].tv_sec) * 1000.0 + (t[7].tv_usec - t[6].tv_usec) / 1000.0);
 
 
 }
@@ -356,8 +356,9 @@ __declspec(dllexport)
 #endif
 #endif
 
-void filter(float *im, float *ref, int n){
-    filter_<5,3>(im, ref, n);
+void filter(float *im, float *ref, int n) {
+    //vd = image_channels + 1
+    filter_<5, 4>(im, ref, n);
 }
 
 

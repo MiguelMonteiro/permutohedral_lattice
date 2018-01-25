@@ -14,8 +14,8 @@ public:
 
 	HashTable(int capacity_): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
 
-        cudaMalloc((void**)&values, capacity*(vd+1)*sizeof(float));
-		cudaMemset((void *)values, 0, capacity*(vd+1)*sizeof(float));
+        cudaMalloc((void**)&values, capacity*vd*sizeof(float));
+		cudaMemset((void *)values, 0, capacity*vd*sizeof(float));
 
         cudaMalloc((void **)&entries, capacity*2*sizeof(int));
 		cudaMemset((void *)entries, -1, capacity*2*sizeof(int));
@@ -36,7 +36,7 @@ public:
 	}
 
 	void resetHashTable() {
-		cudaMemset((void*)values, 0, capacity*(vd+1)*sizeof(float));
+		cudaMemset((void*)values, 0, capacity*vd*sizeof(float));
 	}
 
 	__device__ int modHash(unsigned int n){
