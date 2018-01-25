@@ -38,13 +38,11 @@ public:
 	printf("Save: %s\n", cudaGetErrorString(cudaGetLastError()));
     }
 
-    /*~MirroredArray() {
+    ~MirroredArray() {
 	if (owner)
 		delete[] host;
 	cudaFree(device);
-    }*/
-
-
+    }
 };
 
 #endif

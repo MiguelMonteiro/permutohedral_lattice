@@ -43,8 +43,8 @@ void filter_cpu(float * im, float* ref, int ref_channels, int im_channels, int n
 
 int main(int argc, char **argv) {
 
-    if (argc < 5) {
-        printf("Usage: ./bilateral <image file> <output file> <spatial standard deviation> <color standard deviation>\n");
+    if (argc < 4) {
+        printf("Usage: ./bilateral <image file> <spatial standard deviation> <color standard deviation>\n");
         return 1;
     }
 
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
         filter(flat_gpu, positions,N);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-        printf("%f seconds\n", elapsed_secs);
+        printf("Measured from function call: %f seconds\n", elapsed_secs);
     }
 
 
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
         filter_cpu(flat_cpu, positions, 5, 3, N);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-        printf("%f seconds\n", elapsed_secs);
+        printf("Measured from function call: %f seconds\n", elapsed_secs);
     }
 
     int tol{0};
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     if(wrong_pixels==0)
         printf("The algorithm produced the correct result\n");
     else
-        printf("The result is not correct, it is %f percent different\n", (100.0*wrong_pixels/(3.0*N)));
+        printf("The result is not correct, it is %f percent different (%d values)\n", (100.0*wrong_pixels/(3.0*N)), wrong_pixels);
 
     delete[] flat_cpu;
     delete[] flat_gpu;

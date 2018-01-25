@@ -282,7 +282,7 @@ void filter_(float *im, float *ref, int n) {
 		return;
 	}
 
-	MirroredArray<float> scaleFactor(pd);
+	MirroredArray<float> scaleFactor(static_cast<size_t>(pd));
 
 	float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
 	for (int i = 0; i < pd; i++) {
@@ -291,9 +291,9 @@ void filter_(float *im, float *ref, int n) {
 	scaleFactor.hostToDevice();
 
 
-	MirroredArray<float> positions(ref, n*pd);
-	MirroredArray<MatrixEntry> matrix(n*(pd+1));
-	MirroredArray<float> values(im, n*vd);
+	MirroredArray<float> positions(ref, static_cast<size_t>(n * pd));
+	MirroredArray<MatrixEntry> matrix(static_cast<size_t>(n * (pd + 1)));
+	MirroredArray<float> values(im, static_cast<size_t>(n * vd));
 
 	float *newValues;
     cudaMalloc((void**)&(newValues), n*(pd+1)*(vd+1)*sizeof(float));
@@ -308,14 +308,12 @@ void filter_(float *im, float *ref, int n) {
 
 
 	createMatrix<pd, vd><<<blocks, blockSize>>>(n, positions.device, scaleFactor.device, matrix.device, table);
-	printf("Create Matrix %s\n", cudaGetErrorString(cudaGetLastError()));
 	gettimeofday(t+2, NULL);
 
 	// fix duplicate hash table entries
 	int cleanBlockSize = 32;
 	dim3 cleanBlocks((n-1)/cleanBlockSize+1, 2*(pd+1), 1);
 	cleanHashTable<pd, vd><<<cleanBlocks, cleanBlockSize>>>(2*n*(pd+1), matrix.device, table);
-	printf("Clean Hash Table %s\n", cudaGetErrorString(cudaGetLastError()));
 	gettimeofday(t+3, NULL);
 
 	// splat splits by color, so extend the y coordinate to our blocks to represent that
@@ -325,7 +323,6 @@ void filter_(float *im, float *ref, int n) {
 
 	for (int color = 0; color <= pd; color++) {
 		blur<pd, vd><<<cleanBlocks, cleanBlockSize>>>(n*(pd+1), newValues, matrix.device, color, table);
-		printf("Blur 1.%d %s\n", color, cudaGetErrorString(cudaGetLastError()));
 		std::swap(table.values, newValues);
 	}
 	gettimeofday(t+5, NULL);
@@ -333,7 +330,6 @@ void filter_(float *im, float *ref, int n) {
 
 	blockSize.y = 1;
 	slice<pd, vd><<<blocks, blockSize>>>(n, values.device, matrix.device, table);
-	printf("Slice %s\n", cudaGetErrorString(cudaGetLastError()));
 	gettimeofday(t+6, NULL);
 
 	values.deviceToHost();
@@ -350,7 +346,6 @@ void filter_(float *im, float *ref, int n) {
 	printf("%s: %3.3f ms\n", "Slice", (t[6].tv_sec - t[4].tv_sec)*1000.0 + (t[6].tv_usec - t[5].tv_usec)/1000.0);
 	printf("%s: %3.3f ms\n", "Free", (t[7].tv_sec - t[6].tv_sec)*1000.0 + (t[7].tv_usec - t[6].tv_usec)/1000.0);
 
-	//printf("Total GPU memory usage: %u bytes\n", (unsigned int)GPU_MEMORY_ALLOCATION);
 
 }
 

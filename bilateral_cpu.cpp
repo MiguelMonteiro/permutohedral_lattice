@@ -5,7 +5,6 @@
 #include "CImg.h"
 #include <sys/time.h>
 #include <ctime>
-
 #include "PermutohedralLattice.h"
 #include "utils.h"
 
