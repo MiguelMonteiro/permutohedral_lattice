@@ -4,8 +4,8 @@
 
 #ifndef PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
 #define PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
-#include <memory>
 #include <cstring>
+#include <memory>
 
 class HashTable {
 public:
@@ -13,17 +13,15 @@ public:
      *  pd_: the dimensionality of the position vectors on the hyperplane.
      *  vd_: the dimensionality of the value vectors
      */
-    HashTable(int pd_, int vd_) : pd(pd_), vd(vd_) {
-        capacity = 1 << 15;
+    HashTable(size_t capacity_, int pd_, int vd_) : capacity(capacity_), pd(pd_), vd(vd_) {
         filled = 0;
         entries = new Entry[capacity];
-        keys = new short[pd * capacity / 2];
-        values = new float[vd * capacity / 2];
-        std::memset(values, 0, sizeof(float) * vd * capacity / 2);
+        keys = new short[pd * capacity];
+        values = new float[vd * capacity]{0};
     }
 
     // Returns the number of vectors stored.
-    int size() { return filled; }
+    size_t size() { return filled; }
 
     // Returns a pointer to the keys array.
     short *getKeys() { return keys; }
@@ -38,9 +36,6 @@ public:
      *          should an entry with the given key not found.
      */
     int lookupOffset(const short *key, size_t h, bool create = true) {
-
-        // Double hash table size if necessary
-        if (filled >= (capacity / 2) - 1) { grow(); }
 
         // Find the entry with the given key
         while (1) {
@@ -67,7 +62,8 @@ public:
 
             // increment the bucket with wraparound
             h++;
-            if (h == capacity) h = 0;
+            if (h == capacity)
+                h = 0;
         }
     }
 
@@ -79,7 +75,7 @@ public:
         size_t h = hash(k) % capacity;
         int offset = lookupOffset(k, h, create);
         if (offset < 0)
-            return NULL;
+            return nullptr;
         else
             return values + offset;
     };
@@ -95,41 +91,6 @@ public:
     }
 
 private:
-    /* Grows the size of the hash table */
-    void grow() {
-        printf("Resizing hash table\n");
-
-        size_t oldCapacity = capacity;
-        capacity *= 2;
-
-        // Migrate the value vectors.
-        float *newValues = new float[vd * capacity / 2];
-        std::memset(newValues, 0, sizeof(float) * vd * capacity / 2);
-        std::memcpy(newValues, values, sizeof(float) * vd * filled);
-        delete[] values;
-        values = newValues;
-
-        // Migrate the key vectors.
-        short *newKeys = new short[pd * capacity / 2];
-        std::memcpy(newKeys, keys, sizeof(short) * pd * filled);
-        delete[] keys;
-        keys = newKeys;
-
-        Entry *newEntries = new Entry[capacity];
-
-        // Migrate the table of indices.
-        for (size_t i = 0; i < oldCapacity; i++) {
-            if (entries[i].keyIdx == -1) continue;
-            size_t h = hash(keys + entries[i].keyIdx) % capacity;
-            while (newEntries[h].keyIdx != -1) {
-                h++;
-                if (h == capacity) h = 0;
-            }
-            newEntries[h] = entries[i];
-        }
-        delete[] entries;
-        entries = newEntries;
-    }
 
     // Private struct for the hash table entries.
     struct Entry {

@@ -61,8 +61,8 @@ int main(int argc, char **argv) {
         flat_gpu[i] = flat_cpu[i];
 
     // compute the bilateral kernel
-    float invSpatialStdev = 1.0f / atof(argv[3]);
-    float invColorStdev = 1.0f / atof(argv[4]);
+    float invSpatialStdev = 1.0f / atof(argv[2]);
+    float invColorStdev = 1.0f / atof(argv[3]);
 
     // Construct the position vectors out of x, y, r, g, and b.
     auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
