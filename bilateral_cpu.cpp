@@ -7,7 +7,7 @@
 #include <ctime>
 
 #include "PermutohedralLattice.h"
-
+#include "utils.h"
 
 void filter(float * im, float* ref, float * out, int ref_channels, int im_channels, int num_points){
 
@@ -49,36 +49,15 @@ int main(int argc, char **argv) {
         printf("        For instance, try ./bilateral input.png output.png 4 0.5\n");
         return 1;
     }
-    float pixel_depth = 255.0;
+    float pixel_depth=255.0;
     cimg_library::CImg<unsigned char> image(argv[1]);
 
-    auto flat = new float [image.width() * image.height() * 3]{0};
-    int idx=0;
-    for(int x=0; x < image.width(); ++x){
-        for(int y=0; y < image.height(); ++y){
-            for (int channel=0; channel < 3; ++channel){
-                flat[idx] = image(x, y, 0, channel) / pixel_depth;
-                idx++;
-            }
-        }
-    }
+    auto flat = get_flat_float_from_image(image, pixel_depth);
 
     float invSpatialStdev = 1.0f / atof(argv[3]);
     float invColorStdev = 1.0f / atof(argv[4]);
 
-    auto positions = new float [image.width() * image.height() * 5]{0};
-
-    idx = 0;
-    for(int x=0; x < image.width(); ++x){
-        for(int y=0; y < image.height(); ++y){
-            positions[idx] = invSpatialStdev * x;
-            positions[idx+1] = invSpatialStdev * y;
-            positions[idx+2] = invColorStdev * image(x, y, 0) / pixel_depth;
-            positions[idx+3] = invColorStdev * image(x, y, 1) / pixel_depth;
-            positions[idx+4] = invColorStdev * image(x, y, 2) / pixel_depth;
-            idx+=5;
-        }
-    }
+    auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
 
 
     // Filter the input with respect to the position vectors. (see permutohedral.h)
@@ -92,23 +71,7 @@ int main(int argc, char **argv) {
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
     printf("%f seconds\n", elapsed_secs);
 
-
-    idx=0;
-    for(int x=0; x < image.width(); ++x){
-        for(int y=0; y < image.height(); ++y){
-            for (int channel=0; channel < 3; ++channel){
-                int value{int(out[idx] * pixel_depth)};
-                if(value > pixel_depth)
-                    value = (int) pixel_depth;
-                if(value < 0)
-                    value = 0;
-                image(x, y, channel) = value;
-                idx++;
-            }
-        }
-    }
-
-    image.save(argv[2]);
+    save_output(out, image, argv[2], pixel_depth);
 
     delete[] flat;
     delete[] positions;

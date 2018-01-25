@@ -1,1 +1,2 @@
+#!/usr/bin/env bash
 ~/my_cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -D CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -G "CodeBlocks - Unix Makefiles" ~/permutohedral_lattice/

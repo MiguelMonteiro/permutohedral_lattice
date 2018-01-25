@@ -270,15 +270,8 @@ __global__ static void slice(const int n, float *values, MatrixEntry *matrix, Ha
 }
 
 
-#ifdef LIBRARY
-extern "C++"
-#ifdef WIN32
-__declspec(dllexport)
-#endif
-#endif
 
-
-template<int vd, int pd>
+template<int pd, int vd>
 void filter_(float *im, float *ref, int n) {
 
 	timeval t[9];
