@@ -56,8 +56,8 @@ int main(int argc, char **argv) {
     //get a flat float array
     auto flat_cpu = get_flat_float_from_image(image, pixel_depth);
     //get a copy
-    float flat_gpu[N*3];
-    for(int i=0; i <N*3;i++)
+    auto flat_gpu = new float[N*3]{0};
+    for(int i = 0; i < N * 3; i++)
         flat_gpu[i] = flat_cpu[i];
 
     // compute the bilateral kernel
@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
     //CPU
     {
         printf("Calling filter...\n");
-        std:clock_t begin = std::clock();
+        std::clock_t begin = std::clock();
         filter_cpu(flat_cpu, positions, 5, 3, N);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;

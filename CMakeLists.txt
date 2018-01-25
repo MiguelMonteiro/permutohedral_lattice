@@ -41,7 +41,7 @@ endif()
 
 ##
 
-add_executable(compare_and_gpu compare_and_gpu.cpp CImg.h utils.h)
+add_executable(compare_and_gpu compare_and_gpu.cpp CImg.h utils.h PermutohedralLattice.h PermutohedralLattice.cpp)
 
 set_property(TARGET compare_and_gpu PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 target_link_libraries(compare_and_gpu PRIVATE permutohedral)
