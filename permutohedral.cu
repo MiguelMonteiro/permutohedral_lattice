@@ -20,8 +20,8 @@ struct MatrixEntry {
 };
 
 template<int pd, int vd>
-__global__ static void createMatrix(const int n, const float *positions, const float *scaleFactor, MatrixEntry *matrix,
-                                    HashTable<pd, vd> table) {
+__global__ static void createMatrix(const int n, const float *positions, const float *scaleFactor, const float * canonical, MatrixEntry *matrix,
+                                    HashTable_1<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= n)
@@ -43,8 +43,7 @@ __global__ static void createMatrix(const int n, const float *positions, const f
     elevated[0] = sm;
 
 
-    // find the closest zero-colored lattice point
-
+    // Find the closest 0-colored simplex through rounding
     // greedily search for the closest zero-colored lattice point
     signed short sum = 0;
     for (int i = 0; i <= pd; i++) {
@@ -60,12 +59,37 @@ __global__ static void createMatrix(const int n, const float *positions, const f
     }
     sum /= pd + 1;
 
+    /*
+    // Find the simplex we are in and store it in rank (where rank describes what position coordinate i has in the sorted order of the features values)
+    for (int i = 0; i <= pd; i++)
+        rank[i] = 0;
+    for (int i = 0; i < pd; i++) {
+        double di = elevated[i] - rem0[i];
+        for (int j = i + 1; j <= pd; j++)
+            if (di < elevated[j] - rem0[j])
+                rank[i]++;
+            else
+                rank[j]++;
+    }
+
+    // If the point doesn't lie on the plane (sum != 0) bring it back
+    for (int i = 0; i <= pd; i++) {
+        rank[i] += sum;
+        if (rank[i] < 0) {
+            rank[i] += pd + 1;
+            rem0[i] += pd + 1;
+        } else if (rank[i] > pd) {
+            rank[i] -= pd + 1;
+            rem0[i] -= pd + 1;
+        }
+    }
+    */
+
     // sort differential to find the permutation between this simplex and the canonical one
     for (int i = 0; i <= pd; i++) {
         rank[i] = 0;
         for (int j = 0; j <= pd; j++) {
-            if (elevated[i] - rem0[i] < elevated[j] - rem0[j] ||
-                (elevated[i] - rem0[i] == elevated[j] - rem0[j] && i > j)) {
+            if (elevated[i] - rem0[i] < elevated[j] - rem0[j] || (elevated[i] - rem0[i] == elevated[j] - rem0[j] && i > j)) {
                 rank[i]++;
             }
         }
@@ -102,27 +126,29 @@ __global__ static void createMatrix(const int n, const float *positions, const f
     }
     barycentric[0] += 1.0f + barycentric[pd + 1];
 
+
     short key[pd];
-    for (int color = 0; color <= pd; color++) {
+    for (int remainder = 0; remainder <= pd; remainder++) {
         // Compute the location of the lattice point explicitly (all but
         // the last coordinate - it's redundant because they sum to zero)
 
+        /*for (int i = 0; i < pd; i++)
+            key[i] = static_cast<short>(rem0[i] + canonical[remainder * (pd + 1) + rank[i]]);*/
         for (int i = 0; i < pd; i++) {
-            key[i] = rem0[i] + color;
-            if (rank[i] > pd - color)
+            key[i] = rem0[i] + remainder;
+            if (rank[i] > pd - remainder)
                 key[i] -= (pd + 1);
         }
 
         MatrixEntry r;
-        r.index = table.insert(key, idx * (pd + 1) + color);
-        r.weight = barycentric[color];
-        matrix[idx * (pd + 1) + color] = r;
+        r.index = table.insert(key, idx * (pd + 1) + remainder);
+        r.weight = barycentric[remainder];
+        matrix[idx * (pd + 1) + remainder] = r;
     }
-
 }
 
 template<int pd, int vd>
-__global__ static void cleanHashTable(int n, HashTable<pd, vd> table) {
+__global__ static void cleanHashTable(int n, HashTable_1<pd, vd> table) {
 
     const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
 
@@ -145,7 +171,7 @@ __global__ static void cleanHashTable(int n, HashTable<pd, vd> table) {
 }
 
 template<int pd, int vd>
-__global__ static void splatCache(const int n, float *values, MatrixEntry *matrix, HashTable<pd, vd> table) {
+__global__ static void splatCache(const int n, float *values, MatrixEntry *matrix, HashTable_1<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     const int threadId = threadIdx.x;
@@ -207,7 +233,7 @@ __global__ static void splatCache(const int n, float *values, MatrixEntry *matri
 }
 
 template<int pd, int vd>
-__global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int color, HashTable<pd, vd> table) {
+__global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int color, HashTable_1<pd, vd> table) {
 
     const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
     if (idx >= n)
@@ -246,7 +272,7 @@ __global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int co
 }
 
 template<int pd, int vd>
-__global__ static void slice(const int n, float *values, MatrixEntry *matrix, HashTable<pd, vd> table) {
+__global__ static void slice(const int n, float *values, MatrixEntry *matrix, HashTable_1<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= n)
@@ -271,6 +297,49 @@ __global__ static void slice(const int n, float *values, MatrixEntry *matrix, Ha
 }
 
 
+template<int pd, int vd> class PermutohedralLattice{
+    int * canonical;
+    float * scaleFactor;
+    HashTable_1<pd, vd> hashTable;
+
+
+
+    PermutohedralLattice(): canonical(nullptr), scaleFactor(nullptr){
+        if (n >= 65535 * BLOCK_SIZE) {
+            printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
+            return;
+        }
+    }
+
+    void init_canonical(){
+        int localCanonical[(pd + 1) * (pd + 1)];
+        //auto canonical = new int[(pd + 1) * (pd + 1)];
+        // compute the coordinates of the canonical simplex, in which
+        // the difference between a contained point and the zero
+        // remainder vertex is always in ascending order. (See pg.4 of paper.)
+        for (int i = 0; i <= pd; i++) {
+            for (int j = 0; j <= pd - i; j++)
+                localCanonical[i * (pd + 1) + j] = i;
+            for (int j = pd - i + 1; j <= pd; j++)
+                localCanonical[i * (pd + 1) + j] = i - (pd + 1);
+        }
+        cudaMalloc((void**)&(canonical), ((pd + 1) * (pd + 1))*sizeof(int));
+    }
+
+    void init_scaleFactor(){
+        float hostScaleFactor[pd];
+        float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
+        for (int i = 0; i < pd; i++) {
+            hostScaleFactor[i] = 1.0f / (sqrtf((float) (i + 1) * (i + 2))) * inv_std_dev;
+        }
+        cudaMalloc((void**)&(scaleFactor), pd*sizeof(float));
+    }
+
+
+
+};
+
+
 template<int pd, int vd>
 void filter_(float *im, float *ref, int n) {
 
@@ -282,13 +351,28 @@ void filter_(float *im, float *ref, int n) {
         return;
     }
 
+    //
     MirroredArray<float> scaleFactor(static_cast<size_t>(pd));
-
     float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
     for (int i = 0; i < pd; i++) {
         scaleFactor.host[i] = 1.0f / (sqrtf((float) (i + 1) * (i + 2))) * inv_std_dev;
     }
     scaleFactor.hostToDevice();
+    //
+
+    MirroredArray<float> canonical(static_cast<size_t>());
+    //auto canonical = new int[(pd + 1) * (pd + 1)];
+    // compute the coordinates of the canonical simplex, in which
+    // the difference between a contained point and the zero
+    // remainder vertex is always in ascending order. (See pg.4 of paper.)
+    for (int i = 0; i <= pd; i++) {
+        for (int j = 0; j <= pd - i; j++)
+            canonical.host[i * (pd + 1) + j] = i;
+        for (int j = pd - i + 1; j <= pd; j++)
+            canonical.host[i * (pd + 1) + j] = i - (pd + 1);
+    }
+    canonical.hostToDevice();
+    //
 
 
     MirroredArray<float> positions(ref, static_cast<size_t>(n * pd));
@@ -299,7 +383,7 @@ void filter_(float *im, float *ref, int n) {
     cudaMalloc((void **) &(newValues), n * (pd + 1) * vd * sizeof(float));
     cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(float));
 
-    HashTable<pd, vd> table(n * (pd + 1));
+    HashTable_1<pd, vd> table(n * (pd + 1));
 
     dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
@@ -307,7 +391,7 @@ void filter_(float *im, float *ref, int n) {
     gettimeofday(t + 1, NULL);
 
 
-    createMatrix<pd, vd><<<blocks, blockSize>>>(n, positions.device, scaleFactor.device, matrix.device, table);
+    createMatrix<pd, vd><<<blocks, blockSize>>>(n, positions.device, scaleFactor.device, canonical.device, matrix.device, table);
     gettimeofday(t + 2, NULL);
 
     // fix duplicate hash table entries

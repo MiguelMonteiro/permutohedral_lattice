@@ -12,17 +12,17 @@
 /* Hash table implementation for permutohedral lattice
  *
  * The lattice points are stored sparsely using a hash table.
- * The key for each point is its spatial location in the (d+1)-
+ * The key for each point is its spatial location in the (pd+1)-
  * dimensional space.
  */
 /***************************************************************/
-class HashTable {
+class HashTable_1 {
 public:
     /* Constructor
      *  pd_: the dimensionality of the position vectors on the hyperplane.
      *  vd_: the dimensionality of the value vectors
      */
-    HashTable(int pd_, int vd_) : pd(pd_), vd(vd_) {
+    HashTable_1(int pd_, int vd_) : pd(pd_), vd(vd_) {
         capacity = 1 << 15;
         filled = 0;
         entries = new Entry[capacity];
@@ -159,7 +159,7 @@ private:
 class PermutohedralLattice {
 protected:
 
-    int d, vd, N;
+    int pd, vd, N;
     std::unique_ptr<int[]> canonical;
     std::unique_ptr<float[]> scaleFactor;
 
@@ -195,9 +195,9 @@ protected:
 
 public:
 
-    HashTable hashTable;
+    HashTable_1 hashTable;
 
-    PermutohedralLattice(int d_, int vd_, int N_);
+    PermutohedralLattice(int pd_, int vd_, int N_);
 
     void splat(float *positions, float *values);
 

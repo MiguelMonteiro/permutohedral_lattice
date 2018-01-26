@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     if(wrong_pixels==0)
         printf("The algorithm produced the correct result\n");
     else
-        printf("The result is not correct, it is %f percent different (%d values)\n", (100.0*wrong_pixels/(3.0*N)), wrong_pixels);
+        printf("The result is not correct, it is %f percent different (%pd values)\n", (100.0*wrong_pixels/(3.0*N)), wrong_pixels);
 
     delete[] flat_cpu;
     delete[] flat_gpu;
