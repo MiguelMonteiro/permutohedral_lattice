@@ -297,18 +297,21 @@ __global__ static void slice(const int n, float *values, MatrixEntry *matrix, Ha
 }
 
 
-template<int pd, int vd> class PermutohedralLattice{
+template<int pd, int vd>class PermutohedralLattice{
     int * canonical;
     float * scaleFactor;
     HashTable_1<pd, vd> hashTable;
+    MatrixEntry* matrix;
+    float * ref;
+    float * values;
 
 
-
-    PermutohedralLattice(): canonical(nullptr), scaleFactor(nullptr){
+    PermutohedralLattice(): canonical(nullptr), scaleFactor(nullptr), hashTable(HashTable_1<pd, vd>(n * (pd + 1))){
         if (n >= 65535 * BLOCK_SIZE) {
             printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
             return;
         }
+
     }
 
     void init_canonical(){
@@ -335,8 +338,13 @@ template<int pd, int vd> class PermutohedralLattice{
         cudaMalloc((void**)&(scaleFactor), pd*sizeof(float));
     }
 
+    void init_matrix(){
+        cudaMalloc((void**)&(matrix), n * (pd + 1) * sizeof(MatrixEntry));
+    }
 
-
+    void filter(){
+       return;
+    }
 };
 
 
@@ -351,28 +359,7 @@ void filter_(float *im, float *ref, int n) {
         return;
     }
 
-    //
-    MirroredArray<float> scaleFactor(static_cast<size_t>(pd));
-    float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
-    for (int i = 0; i < pd; i++) {
-        scaleFactor.host[i] = 1.0f / (sqrtf((float) (i + 1) * (i + 2))) * inv_std_dev;
-    }
-    scaleFactor.hostToDevice();
-    //
 
-    MirroredArray<float> canonical(static_cast<size_t>());
-    //auto canonical = new int[(pd + 1) * (pd + 1)];
-    // compute the coordinates of the canonical simplex, in which
-    // the difference between a contained point and the zero
-    // remainder vertex is always in ascending order. (See pg.4 of paper.)
-    for (int i = 0; i <= pd; i++) {
-        for (int j = 0; j <= pd - i; j++)
-            canonical.host[i * (pd + 1) + j] = i;
-        for (int j = pd - i + 1; j <= pd; j++)
-            canonical.host[i * (pd + 1) + j] = i - (pd + 1);
-    }
-    canonical.hostToDevice();
-    //
 
 
     MirroredArray<float> positions(ref, static_cast<size_t>(n * pd));
