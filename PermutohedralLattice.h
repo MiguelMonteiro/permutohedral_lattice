@@ -4,24 +4,34 @@
 
 #ifndef PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
 #define PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
+
 #include <cstring>
 #include <memory>
 
+/***************************************************************/
+/* Hash table implementation for permutohedral lattice
+ *
+ * The lattice points are stored sparsely using a hash table.
+ * The key for each point is its spatial location in the (d+1)-
+ * dimensional space.
+ */
+/***************************************************************/
 class HashTable {
 public:
     /* Constructor
      *  pd_: the dimensionality of the position vectors on the hyperplane.
      *  vd_: the dimensionality of the value vectors
      */
-    HashTable(size_t capacity_, int pd_, int vd_) : capacity(capacity_), pd(pd_), vd(vd_) {
+    HashTable(int pd_, int vd_) : pd(pd_), vd(vd_) {
+        capacity = 1 << 15;
         filled = 0;
         entries = new Entry[capacity];
-        keys = new short[pd * capacity];
-        values = new float[vd * capacity]{0};
+        keys = new short[pd * capacity / 2];
+        values = new float[vd * capacity / 2]{0};
     }
 
     // Returns the number of vectors stored.
-    size_t size() { return filled; }
+    int size() { return filled; }
 
     // Returns a pointer to the keys array.
     short *getKeys() { return keys; }
@@ -35,14 +45,18 @@ public:
      *  create: a flag specifying whether an entry should be created,
      *          should an entry with the given key not found.
      */
-    int lookupOffset(const short *key, size_t h, bool create = true) {
+    int lookupOffset(short *key, size_t h, bool create = true) {
+
+        // Double hash table size if necessary
+        if (filled >= (capacity / 2) - 1) { grow(); }
 
         // Find the entry with the given key
         while (true) {
             Entry e = entries[h];
             // check if the cell is empty
             if (e.keyIdx == -1) {
-                if (!create) return -1; // Return not found.
+                if (!create)
+                    return -1; // Return not found.
                 // need to create an entry. Store the given key.
                 for (int i = 0; i < pd; i++)
                     keys[filled * pd + i] = key[i];
@@ -91,6 +105,40 @@ public:
     }
 
 private:
+    /* Grows the size of the hash table */
+    void grow() {
+        printf("Resizing hash table\n");
+
+        size_t oldCapacity = capacity;
+        capacity *= 2;
+
+        // Migrate the value vectors.
+        auto *newValues = new float[vd * capacity / 2]{0};
+        std::memcpy(newValues, values, sizeof(float) * vd * filled);
+        delete[] values;
+        values = newValues;
+
+        // Migrate the key vectors.
+        auto *newKeys = new short[pd * capacity / 2];
+        std::memcpy(newKeys, keys, sizeof(short) * pd * filled);
+        delete[] keys;
+        keys = newKeys;
+
+        auto *newEntries = new Entry[capacity];
+
+        // Migrate the table of indices.
+        for (size_t i = 0; i < oldCapacity; i++) {
+            if (entries[i].keyIdx == -1) continue;
+            size_t h = hash(keys + entries[i].keyIdx) % capacity;
+            while (newEntries[h].keyIdx != -1) {
+                h++;
+                if (h == capacity) h = 0;
+            }
+            newEntries[h] = entries[i];
+        }
+        delete[] entries;
+        entries = newEntries;
+    }
 
     // Private struct for the hash table entries.
     struct Entry {
@@ -106,6 +154,7 @@ private:
     size_t capacity, filled;
     int pd, vd;
 };
+
 
 class PermutohedralLattice {
 protected:

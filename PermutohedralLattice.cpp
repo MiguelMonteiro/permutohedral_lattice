@@ -287,8 +287,6 @@ void PermutohedralLattice::blur() {
         // the freshest data is now in old_values, and new_values is ready to be written over
     }
 
-
-
     // depending where we ended up, we may have to copy data
     if (old_values != hashTableBase) {
         memcpy(hashTableBase, old_values, hashTable.size() * vd * sizeof(float));
@@ -304,8 +302,8 @@ void PermutohedralLattice::blur() {
 }
 
 
-PermutohedralLattice::PermutohedralLattice(int d_, int im_channels, int N_): d(d_), vd(im_channels + 1), N(N_), hashTable(
-        static_cast<size_t>((d + 1) * N_), d_, im_channels + 1) {
+PermutohedralLattice::PermutohedralLattice(int d_, int im_channels, int N_): d(d_), vd(im_channels + 1), N(N_),
+                                                                             hashTable(d_, im_channels + 1) {
 
     // Allocate storage for various arrays
     replay = new ReplayEntry[N * (d + 1)];
