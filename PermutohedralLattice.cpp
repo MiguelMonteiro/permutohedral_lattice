@@ -135,7 +135,7 @@ void PermutohedralLattice::splat_point(const float *position, const float * valu
     for (int remainder = 0; remainder <= d; remainder++) {
         // Compute the location of the lattice point explicitly (all but the last coordinate - it's redundant because they sum to zero)
         for (int i = 0; i < d; i++)
-            key[i] = rem0[i] + canonical[remainder * (d + 1) + rank[i]];
+            key[i] = static_cast<short>(rem0[i] + canonical[remainder * (d + 1) + rank[i]]);
 
         // Retrieve pointer to the value at this vertex.
         float *val = hashTable.lookup(key, true);
