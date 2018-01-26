@@ -21,7 +21,7 @@ public:
     }
 
     // Returns the number of vectors stored.
-    size_t size() { return capacity; }
+    size_t size() { return filled; }
 
     // Returns a pointer to the keys array.
     short *getKeys() { return keys; }
