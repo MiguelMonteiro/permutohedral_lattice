@@ -122,7 +122,7 @@ __global__ static void createMatrix(const int n, const float *positions, const f
 }
 
 template<int pd, int vd>
-__global__ static void cleanHashTable(int n, MatrixEntry *matrix, HashTable<pd, vd> table) {
+__global__ static void cleanHashTable(int n, HashTable<pd, vd> table) {
 
     const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
 
@@ -313,7 +313,7 @@ void filter_(float *im, float *ref, int n) {
     // fix duplicate hash table entries
     int cleanBlockSize = 32;
     dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
-    cleanHashTable<pd, vd><<<cleanBlocks, cleanBlockSize>>>(2 * n * (pd + 1), matrix.device, table);
+    cleanHashTable<pd, vd> <<<cleanBlocks, cleanBlockSize>>>(2 * n * (pd + 1), table);
     gettimeofday(t + 3, NULL);
 
     // splat splits by color, so extend the y coordinate to our blocks to represent that

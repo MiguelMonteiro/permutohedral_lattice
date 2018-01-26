@@ -22,6 +22,7 @@ std::unique_ptr<int[]> PermutohedralLattice::compute_canonical_simplex() {
     return canonical;
 }
 
+
 std::unique_ptr<float[]> PermutohedralLattice::compute_scale_factor() {
     auto scaleFactor = std::unique_ptr<float[]>(new float[d]);
 
@@ -46,6 +47,7 @@ std::unique_ptr<float[]> PermutohedralLattice::compute_scale_factor() {
     }
     return scaleFactor;
 }
+
 
 void PermutohedralLattice::embed_position_vector(const float *position) {
     // first rotate position into the (d+1)-dimensional hyperplane
