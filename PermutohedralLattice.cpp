@@ -289,7 +289,6 @@ void PermutohedralLattice::blur() {
 
 
 
-
     // depending where we ended up, we may have to copy data
     if (old_values != hashTableBase) {
         memcpy(hashTableBase, old_values, hashTable.size() * vd * sizeof(float));

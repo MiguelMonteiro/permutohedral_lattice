@@ -21,7 +21,7 @@ public:
     }
 
     // Returns the number of vectors stored.
-    size_t size() { return filled; }
+    size_t size() { return capacity; }
 
     // Returns a pointer to the keys array.
     short *getKeys() { return keys; }
@@ -38,7 +38,7 @@ public:
     int lookupOffset(const short *key, size_t h, bool create = true) {
 
         // Find the entry with the given key
-        while (1) {
+        while (true) {
             Entry e = entries[h];
             // check if the cell is empty
             if (e.keyIdx == -1) {
