@@ -18,7 +18,7 @@ if (LINUX)
     target_link_libraries(bilateral_cpu PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
-add_library(permutohedral STATIC permutohedral.cu hash_table.cu MirroredArray.h cuda_code_indexing.h)
+add_library(permutohedral STATIC permutohedral.cu cuda_code_indexing.h)
 
 # Request that particles be built with -std=c++11
 # As this is a public compile feature anything that links to
