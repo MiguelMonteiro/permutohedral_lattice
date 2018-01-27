@@ -16,13 +16,13 @@
  * dimensional space.
  */
 /***************************************************************/
-class HashTable_1 {
+class HashTableCPU {
 public:
     /* Constructor
      *  pd_: the dimensionality of the position vectors on the hyperplane.
      *  vd_: the dimensionality of the value vectors
      */
-    HashTable_1(int pd_, int vd_) : pd(pd_), vd(vd_) {
+    HashTableCPU(int pd_, int vd_) : pd(pd_), vd(vd_) {
         capacity = 1 << 15;
         filled = 0;
         entries = new Entry[capacity];
@@ -156,7 +156,7 @@ private:
 };
 
 
-class PermutohedralLattice {
+class PermutohedralLatticeCPU {
 protected:
 
     int pd, vd, N;
@@ -195,9 +195,9 @@ protected:
 
 public:
 
-    HashTable_1 hashTable;
+    HashTableCPU hashTable;
 
-    PermutohedralLattice(int pd_, int vd_, int N_);
+    PermutohedralLatticeCPU(int pd_, int vd_, int N_);
 
     void splat(float *positions, float *values);
 

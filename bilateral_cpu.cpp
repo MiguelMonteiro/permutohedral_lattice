@@ -5,7 +5,7 @@
 #include "CImg.h"
 #include <sys/time.h>
 #include <ctime>
-#include "PermutohedralLattice.h"
+#include "PermutohedralLatticeCPU.h"
 #include "utils.h"
 
 void filter(float * im, float* ref, float * out, int ref_channels, int im_channels, int num_points){
@@ -14,7 +14,7 @@ void filter(float * im, float* ref, float * out, int ref_channels, int im_channe
 
     // Create lattice
     gettimeofday(t + 0, nullptr);
-    PermutohedralLattice lattice(ref_channels, im_channels, num_points);
+    PermutohedralLatticeCPU lattice(ref_channels, im_channels, num_points);
 
     // Splat into the lattice
     gettimeofday(t + 1, nullptr);

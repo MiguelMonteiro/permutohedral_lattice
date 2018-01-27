@@ -5,9 +5,9 @@
 #include <memory>
 #include <iostream>
 #include <memory>
-#include "PermutohedralLattice.h"
+#include "PermutohedralLatticeCPU.h"
 
-std::unique_ptr<int[]> PermutohedralLattice::compute_canonical_simplex() {
+std::unique_ptr<int[]> PermutohedralLatticeCPU::compute_canonical_simplex() {
     auto canonical = std::unique_ptr<int[]>(new int[(pd + 1) * (pd + 1)]);
     //auto canonical = new int[(pd + 1) * (pd + 1)];
     // compute the coordinates of the canonical simplex, in which
@@ -23,7 +23,7 @@ std::unique_ptr<int[]> PermutohedralLattice::compute_canonical_simplex() {
 }
 
 
-std::unique_ptr<float[]> PermutohedralLattice::compute_scale_factor() {
+std::unique_ptr<float[]> PermutohedralLatticeCPU::compute_scale_factor() {
     auto scaleFactor = std::unique_ptr<float[]>(new float[pd]);
 
     /* We presume that the user would like to do a Gaussian blur of standard deviation
@@ -49,7 +49,7 @@ std::unique_ptr<float[]> PermutohedralLattice::compute_scale_factor() {
 }
 
 
-void PermutohedralLattice::embed_position_vector(const float *position) {
+void PermutohedralLatticeCPU::embed_position_vector(const float *position) {
     // first rotate position into the (pd+1)-dimensional hyperplane
     // sm contains the sum of 1..n of our feature vector
     float sm = 0;
@@ -62,7 +62,7 @@ void PermutohedralLattice::embed_position_vector(const float *position) {
 }
 
 
-void PermutohedralLattice::find_enclosing_simplex(){
+void PermutohedralLatticeCPU::find_enclosing_simplex(){
     // Find the closest 0-colored simplex through rounding
     // greedily search for the closest zero-colored lattice point
     signed short sum = 0;
@@ -105,7 +105,7 @@ void PermutohedralLattice::find_enclosing_simplex(){
 }
 
 
-void PermutohedralLattice::compute_barycentric_coordinates() {
+void PermutohedralLatticeCPU::compute_barycentric_coordinates() {
     float down_factor = 1.0f / (pd + 1);
     for(int i = 0; i < pd + 2; i++)
         barycentric[i]=0;
@@ -121,7 +121,7 @@ void PermutohedralLattice::compute_barycentric_coordinates() {
 }
 
 
-void PermutohedralLattice::splat_point(const float *position, const float * value) {
+void PermutohedralLatticeCPU::splat_point(const float *position, const float * value) {
 
     embed_position_vector(position);
 
@@ -166,7 +166,7 @@ void PermutohedralLattice::splat_point(const float *position, const float * valu
 }
 
 
-void PermutohedralLattice::splat(float * positions, float * values){
+void PermutohedralLatticeCPU::splat(float * positions, float * values){
 
     //auto col = std::unique_ptr<float[]>(new float[vd]);
     auto col = new float[vd];
@@ -192,7 +192,7 @@ void PermutohedralLattice::splat(float * positions, float * values){
  * containing each position vector were calculated and stored in the splatting step.
  * We may reuse this to accelerate the algorithm. (See pg. 6 in paper.)
  */
-void PermutohedralLattice::slice_point(float *col) {
+void PermutohedralLatticeCPU::slice_point(float *col) {
     float *base = hashTable.getValues();
     for (int j = 0; j < vd; j++)
         col[j] = 0;
@@ -204,7 +204,7 @@ void PermutohedralLattice::slice_point(float *col) {
     }
 }
 
-void PermutohedralLattice::slice(float * out){
+void PermutohedralLatticeCPU::slice(float * out){
 
     nReplay = 0;
 
@@ -234,7 +234,7 @@ void PermutohedralLattice::slice(float * out){
 
 
 /* Performs a Gaussian blur along each projected axis in the hyperplane. */
-void PermutohedralLattice::blur() {
+void PermutohedralLatticeCPU::blur() {
 
     // Prepare arrays
     auto *n1_key = new short[pd + 1];
@@ -302,7 +302,7 @@ void PermutohedralLattice::blur() {
 }
 
 
-PermutohedralLattice::PermutohedralLattice(int pd_, int im_channels, int N_): pd(pd_), vd(im_channels + 1), N(N_),
+PermutohedralLatticeCPU::PermutohedralLatticeCPU(int pd_, int im_channels, int N_): pd(pd_), vd(im_channels + 1), N(N_),
                                                                              hashTable(pd_, im_channels + 1) {
 
     // Allocate storage for various arrays

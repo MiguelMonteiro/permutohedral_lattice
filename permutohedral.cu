@@ -9,7 +9,6 @@
 #include <string>
 #include "cuda_code_indexing.h"
 #include <ctime>
-#include "cuda_code_indexing.h"
 
 
 template<int pd, int vd>class HashTableGPU{
@@ -125,8 +124,12 @@ struct MatrixEntry {
 };
 
 template<int pd, int vd>
-__global__ static void createLattice(const int n, const float *positions, const float *scaleFactor, const float * canonical, MatrixEntry *matrix,
-                                    HashTableGPU<pd, vd> table) {
+__global__ static void createLattice(const int n,
+                                     const float *positions,
+                                     const float *scaleFactor,
+                                     const int * canonical,
+                                     MatrixEntry *matrix,
+                                     HashTableGPU<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= n)
@@ -411,24 +414,26 @@ template<int pd, int vd>class PermutohedralLatticeGPU{
 
     float * newValues; // auxiliary array for blur stage
     //number of blocks and threads per block
-    dim3 blocks;
-    dim3 blockSize;
-    dim3 cleanBlocks;
-    unsigned int cleanBlockSize;
+    //dim3 blocks;
+    //dim3 blockSize;
+    //dim3 cleanBlocks;
+    //unsigned int cleanBlockSize;
 
     void init_canonical(){
-        int localCanonical[(pd + 1) * (pd + 1)];
+        int hostCanonical[(pd + 1) * (pd + 1)];
         //auto canonical = new int[(pd + 1) * (pd + 1)];
         // compute the coordinates of the canonical simplex, in which
         // the difference between a contained point and the zero
         // remainder vertex is always in ascending order. (See pg.4 of paper.)
         for (int i = 0; i <= pd; i++) {
             for (int j = 0; j <= pd - i; j++)
-                localCanonical[i * (pd + 1) + j] = i;
+                hostCanonical[i * (pd + 1) + j] = i;
             for (int j = pd - i + 1; j <= pd; j++)
-                localCanonical[i * (pd + 1) + j] = i - (pd + 1);
+                hostCanonical[i * (pd + 1) + j] = i - (pd + 1);
         }
-        cudaMalloc((void**)&(canonical), ((pd + 1) * (pd + 1))*sizeof(int));
+        size_t size =  ((pd + 1) * (pd + 1))*sizeof(int);
+        cudaMalloc((void**)&(canonical), size);
+        cudaMemcpy(canonical, hostCanonical, size, cudaMemcpyHostToDevice);
     }
 
     void init_scaleFactor(){
@@ -437,7 +442,9 @@ template<int pd, int vd>class PermutohedralLatticeGPU{
         for (int i = 0; i < pd; i++) {
             hostScaleFactor[i] = 1.0f / (sqrtf((float) (i + 1) * (i + 2))) * inv_std_dev;
         }
-        cudaMalloc((void**)&(scaleFactor), pd*sizeof(float));
+        size_t size =  pd*sizeof(float);
+        cudaMalloc((void**)&(scaleFactor), size);
+        cudaMemcpy(scaleFactor, hostScaleFactor, size, cudaMemcpyHostToDevice);
     }
 
     void init_matrix(){
@@ -450,12 +457,6 @@ template<int pd, int vd>class PermutohedralLatticeGPU{
         cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(float));
     }
 
-    ~PermutohedralLatticeGPU(){
-        cudaFree(canonical);
-        cudaFree(scaleFactor);
-        cudaFree(matrix);
-        cudaFree(newValues);
-    }
 
 public:
     PermutohedralLatticeGPU(int n): canonical(nullptr), scaleFactor(nullptr), matrix(nullptr), hashTable(HashTableGPU<pd, vd>(n * (pd + 1))){
@@ -471,10 +472,17 @@ public:
         init_matrix();
         init_newValues();
         //
-        blocks = dim3((n - 1) / BLOCK_SIZE + 1, 1, 1);
-        blockSize = dim3(BLOCK_SIZE, 1, 1);
-        cleanBlockSize = 32;
-        cleanBlocks = dim3((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
+        //blocks = dim3((n - 1) / BLOCK_SIZE + 1, 1, 1);
+        //blockSize = dim3(BLOCK_SIZE, 1, 1);
+        //cleanBlockSize = 32;
+        //cleanBlocks = dim3((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
+    }
+
+    ~PermutohedralLatticeGPU(){
+        cudaFree(canonical);
+        cudaFree(scaleFactor);
+        cudaFree(matrix);
+        cudaFree(newValues);
     }
 
 #ifndef DEBUG
@@ -494,6 +502,11 @@ public:
 #else
     // values and position must already be device pointers
     void filter(float * inputs, float*  positions){
+
+        dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
+        dim3 blockSize(BLOCK_SIZE, 1, 1);
+        int cleanBlockSize = 32;
+        dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
 
         createLattice<pd, vd> <<<blocks, blockSize>>>(n, positions, scaleFactor, canonical, matrix, hashTable);
         printf("Create Lattice: %s\n", cudaGetErrorString(cudaGetLastError()));
