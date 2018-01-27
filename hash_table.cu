@@ -4,7 +4,7 @@
 #include "cuda_code_indexing.h"
 
 
-template<int pd, int vd>class HashTable_1{
+template<int pd, int vd>class HashTableGPU{
 public:
 	int capacity;
 	float * values;
@@ -12,7 +12,7 @@ public:
 	int * entries;
 	bool original; //is this the original table or a copy?
 
-	HashTable_1(int capacity_): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
+    HashTableGPU(int capacity_): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
 
         cudaMalloc((void**)&values, capacity*vd*sizeof(float));
 		cudaMemset((void *)values, 0, capacity*vd*sizeof(float));
@@ -24,9 +24,9 @@ public:
 		cudaMemset((void *)keys, 0, capacity*pd*sizeof(signed short));
 	}
 
-	HashTable_1(const HashTable_1& table):capacity(table.capacity), values(table.values), keys(table.keys), entries(table.entries), original(false){}
+    HashTableGPU(const HashTable_1& table):capacity(table.capacity), values(table.values), keys(table.keys), entries(table.entries), original(false){}
 
-	~HashTable_1(){
+	~HashTableGPU(){
 		// only free if it is the original table
 		if(original){
 			cudaFree(values);

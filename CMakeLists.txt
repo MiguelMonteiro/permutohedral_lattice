@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CUDA_STANDARD 11)
 set(CUDA_SEPARABLE_COMPILATION ON)
 
+#just needed for Clion code indexing
+include_directories(/usr/local/cuda/include/)
+
 add_executable(bilateral_cpu bilateral_cpu.cpp PermutohedralLattice.cpp PermutohedralLattice.h CImg.h utils.h)
 if(UNIX AND NOT APPLE)
     set(LINUX TRUE)

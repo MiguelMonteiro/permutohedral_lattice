@@ -2,17 +2,122 @@
 #define PERMUTOHEDRAL_CU
 
 #define BLOCK_SIZE 256
+#define DEBUG
 
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <string>
 #include "cuda_code_indexing.h"
-
-#include <sys/time.h>
-
-#include "MirroredArray.h"
-#include "hash_table.cu"
+#include <ctime>
 #include "cuda_code_indexing.h"
+
+
+template<int pd, int vd>class HashTableGPU{
+public:
+    int capacity;
+    float * values;
+    signed short * keys;
+    int * entries;
+    bool original; //is this the original table or a copy?
+
+    HashTableGPU(int capacity_): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
+
+        cudaMalloc((void**)&values, capacity*vd*sizeof(float));
+        cudaMemset((void *)values, 0, capacity*vd*sizeof(float));
+
+        cudaMalloc((void **)&entries, capacity*2*sizeof(int));
+        cudaMemset((void *)entries, -1, capacity*2*sizeof(int));
+
+        cudaMalloc((void **)&keys, capacity*pd*sizeof(signed short));
+        cudaMemset((void *)keys, 0, capacity*pd*sizeof(signed short));
+    }
+
+    HashTableGPU(const HashTableGPU& table):capacity(table.capacity), values(table.values), keys(table.keys), entries(table.entries), original(false){}
+
+    ~HashTableGPU(){
+        // only free if it is the original table
+        if(original){
+            cudaFree(values);
+            cudaFree(entries);
+            cudaFree(keys);
+        }
+    }
+
+    void resetHashTable() {
+        cudaMemset((void*)values, 0, capacity*vd*sizeof(float));
+    }
+
+    __device__ int modHash(unsigned int n){
+        return(n % (2 * capacity));
+    }
+
+    __device__ unsigned int hash(signed short *key) {
+        unsigned int k = 0;
+        for (int i = 0; i < pd; i++) {
+            k += key[i];
+            k = k * 2531011;
+        }
+        return k;
+    }
+
+    __device__ int insert(signed short *key, unsigned int slot) {
+        int h = modHash(hash(key));
+        while (1) {
+            int *e = entries + h;
+
+            // If the cell is empty (-1), lock it (-2)
+            int contents = atomicCAS(e, -1, -2);
+
+            if (contents == -2){
+                // If it was locked already, move on to the next cell
+            }else if (contents == -1) {
+                // If it was empty, we successfully locked it. Write our key.
+                for (int i = 0; i < pd; i++) {
+                    keys[slot*pd+i] = key[i];
+                }
+                // Unlock
+                atomicExch(e, slot);
+                return h;
+            } else {
+                // The cell is unlocked and has a key in it, check if it matches
+                bool match = true;
+                for (int i = 0; i < pd && match; i++) {
+                    match = (keys[contents*pd+i] == key[i]);
+                }
+                if (match)
+                    return h;
+            }
+            // increment the bucket with wraparound
+            h++;
+            if (h == capacity*2)
+                h = 0;
+        }
+    }
+
+    __device__ int retrieve(signed short *key) {
+
+        int h = modHash(hash(key));
+        while (1) {
+            int *e = entries + h;
+
+            if (*e == -1)
+                return -1;
+
+            bool match = true;
+            for (int i = 0; i < pd && match; i++) {
+                match = (keys[(*e)*pd+i] == key[i]);
+            }
+            if (match)
+                return *e;
+
+            h++;
+            if (h == capacity*2)
+                h = 0;
+        }
+    }
+};
+
+
 
 struct MatrixEntry {
     int index;
@@ -20,8 +125,8 @@ struct MatrixEntry {
 };
 
 template<int pd, int vd>
-__global__ static void createMatrix(const int n, const float *positions, const float *scaleFactor, const float * canonical, MatrixEntry *matrix,
-                                    HashTable_1<pd, vd> table) {
+__global__ static void createLattice(const int n, const float *positions, const float *scaleFactor, const float * canonical, MatrixEntry *matrix,
+                                    HashTableGPU<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= n)
@@ -148,7 +253,7 @@ __global__ static void createMatrix(const int n, const float *positions, const f
 }
 
 template<int pd, int vd>
-__global__ static void cleanHashTable(int n, HashTable_1<pd, vd> table) {
+__global__ static void cleanHashTable(int n, HashTableGPU<pd, vd> table) {
 
     const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
 
@@ -171,7 +276,7 @@ __global__ static void cleanHashTable(int n, HashTable_1<pd, vd> table) {
 }
 
 template<int pd, int vd>
-__global__ static void splatCache(const int n, float *values, MatrixEntry *matrix, HashTable_1<pd, vd> table) {
+__global__ static void splatCache(const int n, float *values, MatrixEntry *matrix, HashTableGPU<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     const int threadId = threadIdx.x;
@@ -233,7 +338,7 @@ __global__ static void splatCache(const int n, float *values, MatrixEntry *matri
 }
 
 template<int pd, int vd>
-__global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int color, HashTable_1<pd, vd> table) {
+__global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int color, HashTableGPU<pd, vd> table) {
 
     const int idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x * blockDim.y + threadIdx.x;
     if (idx >= n)
@@ -272,7 +377,7 @@ __global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int co
 }
 
 template<int pd, int vd>
-__global__ static void slice(const int n, float *values, MatrixEntry *matrix, HashTable_1<pd, vd> table) {
+__global__ static void slice(const int n, float *values, MatrixEntry *matrix, HashTableGPU<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= n)
@@ -297,22 +402,19 @@ __global__ static void slice(const int n, float *values, MatrixEntry *matrix, Ha
 }
 
 
-template<int pd, int vd>class PermutohedralLattice{
+template<int pd, int vd>class PermutohedralLatticeGPU{
+    int n; //number of pixels/voxels etc..
     int * canonical;
     float * scaleFactor;
-    HashTable_1<pd, vd> hashTable;
     MatrixEntry* matrix;
-    float * ref;
-    float * values;
+    HashTableGPU<pd, vd> hashTable;
 
-
-    PermutohedralLattice(): canonical(nullptr), scaleFactor(nullptr), hashTable(HashTable_1<pd, vd>(n * (pd + 1))){
-        if (n >= 65535 * BLOCK_SIZE) {
-            printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
-            return;
-        }
-
-    }
+    float * newValues; // auxiliary array for blur stage
+    //number of blocks and threads per block
+    dim3 blocks;
+    dim3 blockSize;
+    dim3 cleanBlocks;
+    unsigned int cleanBlockSize;
 
     void init_canonical(){
         int localCanonical[(pd + 1) * (pd + 1)];
@@ -342,12 +444,104 @@ template<int pd, int vd>class PermutohedralLattice{
         cudaMalloc((void**)&(matrix), n * (pd + 1) * sizeof(MatrixEntry));
     }
 
-    void filter(){
-       return;
+    void init_newValues(){
+        float *newValues;
+        cudaMalloc((void **) &(newValues), n * (pd + 1) * vd * sizeof(float));
+        cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(float));
     }
+
+    ~PermutohedralLatticeGPU(){
+        cudaFree(canonical);
+        cudaFree(scaleFactor);
+        cudaFree(matrix);
+        cudaFree(newValues);
+    }
+
+public:
+    PermutohedralLatticeGPU(int n): canonical(nullptr), scaleFactor(nullptr), matrix(nullptr), hashTable(HashTableGPU<pd, vd>(n * (pd + 1))){
+
+        if (n >= 65535 * BLOCK_SIZE) {
+            printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
+            //this should crash the program
+        }
+
+        // initialize device memory
+        init_canonical();
+        init_scaleFactor();
+        init_matrix();
+        init_newValues();
+        //
+        blocks = dim3((n - 1) / BLOCK_SIZE + 1, 1, 1);
+        blockSize = dim3(BLOCK_SIZE, 1, 1);
+        cleanBlockSize = 32;
+        cleanBlocks = dim3((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
+    }
+
+#ifndef DEBUG
+    // values and position must already be device pointers
+    void filter(float * inputs, float*  positions){
+        createLattice<pd, vd> <<<blocks, blockSize>>>(n, positions, scaleFactor, canonical, matrix, hashTable);
+        cleanHashTable<pd, vd> <<<cleanBlocks, cleanBlockSize>>>(2 * n * (pd + 1), hashTable);
+        blocks.y = pd + 1;
+        splatCache<pd, vd><<<blocks, blockSize>>>(n, inputs, matrix, hashTable);
+        for (int remainder = 0; remainder <= pd; remainder++) {
+            blur<pd, vd><<<cleanBlocks, cleanBlockSize>>>(n * (pd + 1), newValues, matrix, remainder, hashTable);
+            std::swap(hashTable.values, newValues);
+        }
+        blockSize.y = 1;
+        slice<pd, vd><<< blocks, blockSize>>>(n, inputs, matrix, hashTable);
+    }
+#else
+    // values and position must already be device pointers
+    void filter(float * inputs, float*  positions){
+
+        createLattice<pd, vd> <<<blocks, blockSize>>>(n, positions, scaleFactor, canonical, matrix, hashTable);
+        printf("Create Lattice: %s\n", cudaGetErrorString(cudaGetLastError()));
+
+        cleanHashTable<pd, vd> <<<cleanBlocks, cleanBlockSize>>>(2 * n * (pd + 1), hashTable);
+        printf("Clean Hash Table: %s\n", cudaGetErrorString(cudaGetLastError()));
+
+        blocks.y = pd + 1;
+        splatCache<pd, vd><<<blocks, blockSize>>>(n, inputs, matrix, hashTable);
+        printf("Splat: %s\n", cudaGetErrorString(cudaGetLastError()));
+
+        for (int remainder = 0; remainder <= pd; remainder++) {
+            blur<pd, vd><<<cleanBlocks, cleanBlockSize>>>(n * (pd + 1), newValues, matrix, remainder, hashTable);
+            printf("Blur %d: %s\n", remainder, cudaGetErrorString(cudaGetLastError()));
+            std::swap(hashTable.values, newValues);
+        }
+        blockSize.y = 1;
+        slice<pd, vd><<< blocks, blockSize>>>(n, inputs, matrix, hashTable);
+        printf("Slice: %s\n", cudaGetErrorString(cudaGetLastError()));
+    }
+
+#endif
 };
 
+template<int pd, int vd>
+void filter_(float *input, float *positions, int n) {
 
+    //allocate memory in the GPU, ideally this will be handled by tensorflow later
+    float * input_gpu = nullptr;
+    float * positions_gpu = nullptr;
+
+    cudaMalloc((void**)&(input_gpu), n*(vd-1)*sizeof(float));
+    cudaMemcpy(input_gpu, input, n*(vd-1)*sizeof(float), cudaMemcpyHostToDevice);
+
+    cudaMalloc((void**)&(positions_gpu), n*pd*sizeof(float));
+    cudaMemcpy(positions_gpu, positions, n*pd*sizeof(float), cudaMemcpyHostToDevice);
+
+    auto lattice = PermutohedralLatticeGPU<pd, vd>(n);
+    lattice.filter(input, positions);
+
+    cudaMemcpy(input, positions_gpu, n*(vd-1)*sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(input_gpu);
+    cudaFree(positions_gpu);
+}
+
+
+/*
 template<int pd, int vd>
 void filter_(float *im, float *ref, int n) {
 
@@ -358,9 +552,6 @@ void filter_(float *im, float *ref, int n) {
         printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
         return;
     }
-
-
-
 
     MirroredArray<float> positions(ref, static_cast<size_t>(n * pd));
     MirroredArray<MatrixEntry> matrix(static_cast<size_t>(n * (pd + 1)));
@@ -420,6 +611,7 @@ void filter_(float *im, float *ref, int n) {
 
 }
 
+*/
 #ifdef LIBRARY
 extern "C++"
 #ifdef WIN32
@@ -427,9 +619,10 @@ __declspec(dllexport)
 #endif
 #endif
 
-void filter(float *im, float *ref, int n) {
+void filter(float *input, float *positions, int n) {
     //vd = image_channels + 1
-    filter_<5, 4>(im, ref, n);
+
+    filter_<5, 4>(input, positions, n);
 }
 
 
