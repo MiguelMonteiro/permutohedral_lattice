@@ -5,6 +5,7 @@
 #include <memory>
 #include <iostream>
 #include <memory>
+#include <sys/time.h>
 #include "PermutohedralLatticeCPU.h"
 
 std::unique_ptr<int[]> PermutohedralLatticeCPU::compute_canonical_simplex() {
@@ -322,5 +323,5 @@ PermutohedralLatticeCPU::PermutohedralLatticeCPU(int pd_, int im_channels, int N
     // barycentric coordinates of position
     barycentric = std::unique_ptr<float[]>(new float[pd + 2]);
 
-
 }
+

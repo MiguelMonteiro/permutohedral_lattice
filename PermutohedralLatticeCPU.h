@@ -207,4 +207,38 @@ public:
 };
 
 
+static void filter_cpu(float * im, float* ref, int ref_channels, int im_channels, int num_points){
+
+    timeval t[5];
+
+    // Create lattice
+    gettimeofday(t + 0, nullptr);
+    PermutohedralLatticeCPU lattice(ref_channels, im_channels, num_points);
+
+    // Splat into the lattice
+    gettimeofday(t + 1, nullptr);
+    printf("Splatting...\n");
+    lattice.splat(ref, im);
+
+
+    // Blur the lattice
+    gettimeofday(t + 2, nullptr);
+    printf("Blurring...");
+    lattice.blur();
+
+    // Slice from the lattice
+    gettimeofday(t + 3, nullptr);
+    printf("Slicing...\n");
+    lattice.slice(im);
+
+
+    // Print time elapsed for each step
+    gettimeofday(t + 4, nullptr);
+    const char *names[4] = {"Init  ", "Splat ", "Blur  ", "Slice "};
+    for (int i = 1; i < 5; i++)
+        printf("%s: %3.3f ms\n", names[i - 1], (t[i].tv_sec - t[i - 1].tv_sec) +
+                                               (t[i].tv_usec - t[i - 1].tv_usec) / 1000000.0);
+}
+
+
 #endif //PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
