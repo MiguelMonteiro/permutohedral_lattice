@@ -9,6 +9,7 @@
 #include <string>
 #include "cuda_code_indexing.h"
 #include <ctime>
+#include <sys/time.h>
 
 
 template<int pd, int vd>class HashTableGPU{
@@ -406,6 +407,7 @@ __global__ static void slice(const int n, float *values, MatrixEntry *matrix, Ha
 
 
 template<int pd, int vd>class PermutohedralLatticeGPU{
+public:
     int n; //number of pixels/voxels etc..
     int * canonical;
     float * scaleFactor;
@@ -436,6 +438,7 @@ template<int pd, int vd>class PermutohedralLatticeGPU{
         cudaMemcpy(canonical, hostCanonical, size, cudaMemcpyHostToDevice);
     }
 
+
     void init_scaleFactor(){
         float hostScaleFactor[pd];
         float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
@@ -452,14 +455,12 @@ template<int pd, int vd>class PermutohedralLatticeGPU{
     }
 
     void init_newValues(){
-        float *newValues;
         cudaMalloc((void **) &(newValues), n * (pd + 1) * vd * sizeof(float));
         cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(float));
     }
 
 
-public:
-    PermutohedralLatticeGPU(int n): canonical(nullptr), scaleFactor(nullptr), matrix(nullptr), hashTable(HashTableGPU<pd, vd>(n * (pd + 1))){
+    PermutohedralLatticeGPU(int n_): n(n_), canonical(nullptr), scaleFactor(nullptr), matrix(nullptr), newValues(nullptr), hashTable(HashTableGPU<pd, vd>(n * (pd + 1))){
 
         if (n >= 65535 * BLOCK_SIZE) {
             printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
@@ -531,6 +532,7 @@ public:
 #endif
 };
 
+
 template<int pd, int vd>
 void filter_(float *input, float *positions, int n) {
 
@@ -555,77 +557,6 @@ void filter_(float *input, float *positions, int n) {
 }
 
 
-/*
-template<int pd, int vd>
-void filter_(float *im, float *ref, int n) {
-
-    timeval t[9];
-    gettimeofday(t + 0, NULL);
-
-    if (n >= 65535 * BLOCK_SIZE) {
-        printf("Not enough GPU memory (on x axis, you can change the code to use other grid dims)\n");
-        return;
-    }
-
-    MirroredArray<float> positions(ref, static_cast<size_t>(n * pd));
-    MirroredArray<MatrixEntry> matrix(static_cast<size_t>(n * (pd + 1)));
-    MirroredArray<float> values(im, static_cast<size_t>(n * (vd-1)));
-
-    float *newValues;
-    cudaMalloc((void **) &(newValues), n * (pd + 1) * vd * sizeof(float));
-    cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(float));
-
-    HashTable_1<pd, vd> table(n * (pd + 1));
-
-    dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
-    dim3 blockSize(BLOCK_SIZE, 1, 1);
-
-    gettimeofday(t + 1, NULL);
-
-
-    createMatrix<pd, vd><<<blocks, blockSize>>>(n, positions.device, scaleFactor.device, canonical.device, matrix.device, table);
-    gettimeofday(t + 2, NULL);
-
-    // fix duplicate hash table entries
-    int cleanBlockSize = 32;
-    dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
-    cleanHashTable<pd, vd> <<<cleanBlocks, cleanBlockSize>>>(2 * n * (pd + 1), table);
-    gettimeofday(t + 3, NULL);
-
-    // splat splits by color, so extend the y coordinate to our blocks to represent that
-    blocks.y = pd + 1;
-    splatCache<pd, vd><<<blocks, blockSize>>>(n, values.device, matrix.device, table);
-    gettimeofday(t + 4, NULL);
-
-    for (int color = 0; color <= pd; color++) {
-        blur<pd, vd><<<cleanBlocks, cleanBlockSize>>>(n * (pd + 1), newValues, matrix.device, color, table);
-        std::swap(table.values, newValues);
-    }
-    gettimeofday(t + 5, NULL);
-
-
-    blockSize.y = 1;
-    slice<pd, vd><<< blocks, blockSize>>>(n, values.device, matrix.device, table);
-    gettimeofday(t + 6, NULL);
-
-    values.deviceToHost();
-    cudaFree(newValues);
-    gettimeofday(t + 7, NULL);
-
-    double total = (t[7].tv_sec - t[0].tv_sec) * 1000.0 + (t[7].tv_usec - t[0].tv_usec) / 1000.0;
-    printf("Total time: %3.3f ms\n", total);
-    printf("%s: %3.3f ms\n", "Init", (t[1].tv_sec - t[0].tv_sec) * 1000.0 + (t[1].tv_usec - t[0].tv_usec) / 1000.0);
-    printf("%s: %3.3f ms\n", "Create", (t[2].tv_sec - t[1].tv_sec) * 1000.0 + (t[2].tv_usec - t[1].tv_usec) / 1000.0);
-    printf("%s: %3.3f ms\n", "Clean", (t[3].tv_sec - t[2].tv_sec) * 1000.0 + (t[3].tv_usec - t[2].tv_usec) / 1000.0);
-    printf("%s: %3.3f ms\n", "Splat", (t[4].tv_sec - t[3].tv_sec) * 1000.0 + (t[4].tv_usec - t[3].tv_usec) / 1000.0);
-    printf("%s: %3.3f ms\n", "Blur", (t[5].tv_sec - t[4].tv_sec) * 1000.0 + (t[5].tv_usec - t[4].tv_usec) / 1000.0);
-    printf("%s: %3.3f ms\n", "Slice", (t[6].tv_sec - t[4].tv_sec) * 1000.0 + (t[6].tv_usec - t[5].tv_usec) / 1000.0);
-    printf("%s: %3.3f ms\n", "Free", (t[7].tv_sec - t[6].tv_sec) * 1000.0 + (t[7].tv_usec - t[6].tv_usec) / 1000.0);
-
-
-}
-
-*/
 #ifdef LIBRARY
 extern "C++"
 #ifdef WIN32
