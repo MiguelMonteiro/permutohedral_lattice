@@ -501,7 +501,7 @@ public:
     }
 #else
     // values and position must already be device pointers
-    void filter(float * inputs, float*  positions){
+    void filter(float* inputs, float*  positions){
 
         dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
         dim3 blockSize(BLOCK_SIZE, 1, 1);
@@ -545,12 +545,13 @@ void filter_(float *input, float *positions, int n) {
     cudaMemcpy(positions_gpu, positions, n*pd*sizeof(float), cudaMemcpyHostToDevice);
 
     auto lattice = PermutohedralLatticeGPU<pd, vd>(n);
-    lattice.filter(input, positions);
+    lattice.filter(input_gpu, positions_gpu);
 
-    cudaMemcpy(input, positions_gpu, n*(vd-1)*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(input, input_gpu, n*(vd-1)*sizeof(float), cudaMemcpyDeviceToHost);
 
     cudaFree(input_gpu);
     cudaFree(positions_gpu);
+
 }
 
 

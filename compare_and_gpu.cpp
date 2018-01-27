@@ -8,7 +8,7 @@
 #include "PermutohedralLatticeCPU.h"
 #include <sys/time.h>
 
-extern "C++" void filter(float *values, float *positions, int n);
+extern "C++" void filter(float *input, float *positions, int n);
 
 
 void filter_cpu(float * im, float* ref, int ref_channels, int im_channels, int num_points){
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     {
         printf("Calling filter GPU...\n");
         std:clock_t begin = std::clock();
-        filter(flat_gpu, positions,N);
+        filter(flat_gpu, positions, N);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         printf("Measured from function call: %f seconds\n", elapsed_secs);
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     if(wrong_pixels==0)
         printf("The algorithm produced the correct result\n");
     else
-        printf("The result is not correct, it is %f percent different (%pd values)\n", (100.0*wrong_pixels/(3.0*N)), wrong_pixels);
+        printf("The result is not correct, it is %f percent different (%d values)\n", (100.0*wrong_pixels/(3.0*N)), wrong_pixels);
 
     delete[] flat_cpu;
     delete[] flat_gpu;
