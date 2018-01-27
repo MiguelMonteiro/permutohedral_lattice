@@ -5,41 +5,8 @@
 #include "CImg.h"
 #include <sys/time.h>
 #include <ctime>
-#include "PermutohedralLattice.h"
+#include "PermutohedralLatticeCPU.h"
 #include "utils.h"
-
-void filter(float * im, float* ref, float * out, int ref_channels, int im_channels, int num_points){
-
-    timeval t[5];
-
-    // Create lattice
-    gettimeofday(t + 0, nullptr);
-    PermutohedralLattice lattice(ref_channels, im_channels, num_points);
-
-    // Splat into the lattice
-    gettimeofday(t + 1, nullptr);
-    printf("Splatting...\n");
-    lattice.splat(ref, im);
-
-
-    // Blur the lattice
-    gettimeofday(t + 2, nullptr);
-    printf("Blurring...");
-    lattice.blur();
-
-    // Slice from the lattice
-    gettimeofday(t + 3, nullptr);
-    printf("Slicing...\n");
-    lattice.slice(out);
-
-
-    // Print time elapsed for each step
-    gettimeofday(t + 4, nullptr);
-    const char *names[4] = {"Init  ", "Splat ", "Blur  ", "Slice "};
-    for (int i = 1; i < 5; i++)
-        printf("%s: %3.3f ms\n", names[i - 1], (t[i].tv_sec - t[i - 1].tv_sec) +
-                                               (t[i].tv_usec - t[i - 1].tv_usec) / 1000000.0);
-}
 
 int main(int argc, char **argv) {
     if (argc < 5) {
@@ -64,8 +31,8 @@ int main(int argc, char **argv) {
     auto out = new float [N * 3]{255};
 
     printf("Calling filter...\n");
-    std:clock_t begin = std::clock();
-    filter(flat, positions, out, 5, 3, N);
+    std::clock_t begin = std::clock();
+    filter_cpu(flat, positions, 5, 3, N);
     std::clock_t end = std::clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
     printf("%f seconds\n", elapsed_secs);

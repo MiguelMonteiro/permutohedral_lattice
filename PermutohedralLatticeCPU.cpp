@@ -5,43 +5,44 @@
 #include <memory>
 #include <iostream>
 #include <memory>
-#include "PermutohedralLattice.h"
+#include <sys/time.h>
+#include "PermutohedralLatticeCPU.h"
 
-std::unique_ptr<int[]> PermutohedralLattice::compute_canonical_simplex() {
-    auto canonical = std::unique_ptr<int[]>(new int[(d + 1) * (d + 1)]);
-    //auto canonical = new int[(d + 1) * (d + 1)];
+std::unique_ptr<int[]> PermutohedralLatticeCPU::compute_canonical_simplex() {
+    auto canonical = std::unique_ptr<int[]>(new int[(pd + 1) * (pd + 1)]);
+    //auto canonical = new int[(pd + 1) * (pd + 1)];
     // compute the coordinates of the canonical simplex, in which
     // the difference between a contained point and the zero
     // remainder vertex is always in ascending order. (See pg.4 of paper.)
-    for (int i = 0; i <= d; i++) {
-        for (int j = 0; j <= d - i; j++)
-            canonical[i * (d + 1) + j] = i;
-        for (int j = d - i + 1; j <= d; j++)
-            canonical[i * (d + 1) + j] = i - (d + 1);
+    for (int i = 0; i <= pd; i++) {
+        for (int j = 0; j <= pd - i; j++)
+            canonical[i * (pd + 1) + j] = i;
+        for (int j = pd - i + 1; j <= pd; j++)
+            canonical[i * (pd + 1) + j] = i - (pd + 1);
     }
     return canonical;
 }
 
 
-std::unique_ptr<float[]> PermutohedralLattice::compute_scale_factor() {
-    auto scaleFactor = std::unique_ptr<float[]>(new float[d]);
+std::unique_ptr<float[]> PermutohedralLatticeCPU::compute_scale_factor() {
+    auto scaleFactor = std::unique_ptr<float[]>(new float[pd]);
 
     /* We presume that the user would like to do a Gaussian blur of standard deviation
-     * 1 in each dimension (or a total variance of d, summed over dimensions.)
-     * Because the total variance of the blur performed by this algorithm is not d,
+     * 1 in each dimension (or a total variance of pd, summed over dimensions.)
+     * Because the total variance of the blur performed by this algorithm is not pd,
      * we must scale the space to offset this.
      *
      * The total variance of the algorithm is (See pg.6 and 10 of paper):
      *  [variance of splatting] + [variance of blurring] + [variance of splatting]
-     *   = d(d+1)(d+1)/12 + d(d+1)(d+1)/2 + d(d+1)(d+1)/12
-     *   = 2d(d+1)(d+1)/3.
+     *   = pd(pd+1)(pd+1)/12 + pd(pd+1)(pd+1)/2 + pd(pd+1)(pd+1)/12
+     *   = 2d(pd+1)(pd+1)/3.
      *
-     * So we need to scale the space by (d+1)sqrt(2/3).
+     * So we need to scale the space by (pd+1)sqrt(2/3).
      */
-    float inv_std_dev = (d + 1) * sqrtf(2.0f / 3);
+    float inv_std_dev = (pd + 1) * sqrtf(2.0f / 3);
 
     // Compute parts of the rotation matrix E. (See pg.4-5 of paper.)
-    for (int i = 0; i < d; i++) {
+    for (int i = 0; i < pd; i++) {
         // the diagonal entries for normalization
         scaleFactor[i] = 1.0f / (sqrtf((float) (i + 1) * (i + 2))) * inv_std_dev;
     }
@@ -49,11 +50,11 @@ std::unique_ptr<float[]> PermutohedralLattice::compute_scale_factor() {
 }
 
 
-void PermutohedralLattice::embed_position_vector(const float *position) {
-    // first rotate position into the (d+1)-dimensional hyperplane
+void PermutohedralLatticeCPU::embed_position_vector(const float *position) {
+    // first rotate position into the (pd+1)-dimensional hyperplane
     // sm contains the sum of 1..n of our feature vector
     float sm = 0;
-    for (int i = d; i > 0; i--) {
+    for (int i = pd; i > 0; i--) {
         float cf = position[i - 1] * scaleFactor[i - 1];
         elevated[i] = sm - i * cf;
         sm += cf;
@@ -62,31 +63,29 @@ void PermutohedralLattice::embed_position_vector(const float *position) {
 }
 
 
-void PermutohedralLattice::find_enclosing_simplex(){
+void PermutohedralLatticeCPU::find_enclosing_simplex(){
     // Find the closest 0-colored simplex through rounding
-    float down_factor = 1.0f / (d + 1);
-    float up_factor = (d + 1);
-    int sum = 0;
-    for (int i = 0; i <= d; i++) {
-        int rd2;
-        float v = down_factor * elevated[i];
-        float up = ceilf(v) * up_factor;
-        float down = floorf(v) * up_factor;
-        if (up - elevated[i] < elevated[i] - down)
-            rd2 = (short) up;
-        else
-            rd2 = (short) down;
-
-        rem0[i] = rd2;
-        sum += rd2 * down_factor;
+    // greedily search for the closest zero-colored lattice point
+    signed short sum = 0;
+    for (int i = 0; i <= pd; i++) {
+        float v = elevated[i] * (1.0f / (pd + 1));
+        float up = ceilf(v) * (pd + 1);
+        float down = floorf(v) * (pd + 1);
+        if (up - elevated[i] < elevated[i] - down) {
+            rem0[i] = (signed short) up;
+        } else {
+            rem0[i] = (signed short) down;
+        }
+        sum += rem0[i];
     }
+    sum /= pd + 1;
 
     // Find the simplex we are in and store it in rank (where rank describes what position coordinate i has in the sorted order of the features values)
-    for (int i = 0; i <= d; i++)
+    for (int i = 0; i <= pd; i++)
         rank[i] = 0;
-    for (int i = 0; i < d; i++) {
+    for (int i = 0; i < pd; i++) {
         double di = elevated[i] - rem0[i];
-        for (int j = i + 1; j <= d; j++)
+        for (int j = i + 1; j <= pd; j++)
             if (di < elevated[j] - rem0[j])
                 rank[i]++;
             else
@@ -94,36 +93,36 @@ void PermutohedralLattice::find_enclosing_simplex(){
     }
 
     // If the point doesn't lie on the plane (sum != 0) bring it back
-    for (int i = 0; i <= d; i++) {
+    for (int i = 0; i <= pd; i++) {
         rank[i] += sum;
         if (rank[i] < 0) {
-            rank[i] += d + 1;
-            rem0[i] += d + 1;
-        } else if (rank[i] > d) {
-            rank[i] -= d + 1;
-            rem0[i] -= d + 1;
+            rank[i] += pd + 1;
+            rem0[i] += pd + 1;
+        } else if (rank[i] > pd) {
+            rank[i] -= pd + 1;
+            rem0[i] -= pd + 1;
         }
     }
 }
 
 
-void PermutohedralLattice::compute_barycentric_coordinates() {
-    float down_factor = 1.0f / (d + 1);
-    for(int i = 0; i < d + 2; i++)
+void PermutohedralLatticeCPU::compute_barycentric_coordinates() {
+    float down_factor = 1.0f / (pd + 1);
+    for(int i = 0; i < pd + 2; i++)
         barycentric[i]=0;
-    //memset(barycentric, 0, sizeof(float) * (d + 2));
+    //memset(barycentric, 0, sizeof(float) * (pd + 2));
     // Compute the barycentric coordinates (p.10 in [Adams etal 2010])
-    for (int i = 0; i <= d; i++) {
+    for (int i = 0; i <= pd; i++) {
         float v = (elevated[i] - rem0[i]) * down_factor;
-        barycentric[d - rank[i]] += v;
-        barycentric[d - rank[i] + 1] -= v;
+        barycentric[pd - rank[i]] += v;
+        barycentric[pd - rank[i] + 1] -= v;
     }
     // Wrap around
-    barycentric[0] += 1.0 + barycentric[d + 1];
+    barycentric[0] += 1.0 + barycentric[pd + 1];
 }
 
 
-void PermutohedralLattice::splat_point(const float *position, const float * value) {
+void PermutohedralLatticeCPU::splat_point(const float *position, const float * value) {
 
     embed_position_vector(position);
 
@@ -132,12 +131,12 @@ void PermutohedralLattice::splat_point(const float *position, const float * valu
     compute_barycentric_coordinates();
 
     //here key seems to be 1 too long
-    auto key = new short[d + 1];
+    auto key = new short[pd + 1];
     // Splat the value into each vertex of the simplex, with barycentric weights.
-    for (int remainder = 0; remainder <= d; remainder++) {
+    for (int remainder = 0; remainder <= pd; remainder++) {
         // Compute the location of the lattice point explicitly (all but the last coordinate - it's redundant because they sum to zero)
-        for (int i = 0; i < d; i++)
-            key[i] = static_cast<short>(rem0[i] + canonical[remainder * (d + 1) + rank[i]]);
+        for (int i = 0; i < pd; i++)
+            key[i] = static_cast<short>(rem0[i] + canonical[remainder * (pd + 1) + rank[i]]);
 
         // Retrieve pointer to the value at this vertex.
         float *val = hashTable.lookup(key, true);
@@ -156,9 +155,9 @@ void PermutohedralLattice::splat_point(const float *position, const float * valu
     delete[] key;
 
 /*    // Compute all vertices and their offset
-    for( int remainder=0; remainder<=d; remainder++ ){
-        for( int i=0; i<d; i++ )
-            key[i] = rem0[i] + canonical[ remainder*(d+1) + rank[i] ];
+    for( int remainder=0; remainder<=pd; remainder++ ){
+        for( int i=0; i<pd; i++ )
+            key[i] = rem0[i] + canonical[ remainder*(pd+1) + rank[i] ];
         offset_[ k*(d_+1)+remainder ] = hash_table.find( key, true );
         rank_[ k*(d_+1)+remainder ] = rank[remainder];
         barycentric_[ k*(d_+1)+remainder ] = barycentric[ remainder ];
@@ -168,7 +167,7 @@ void PermutohedralLattice::splat_point(const float *position, const float * valu
 }
 
 
-void PermutohedralLattice::splat(float * positions, float * values){
+void PermutohedralLatticeCPU::splat(float * positions, float * values){
 
     //auto col = std::unique_ptr<float[]>(new float[vd]);
     auto col = new float[vd];
@@ -183,7 +182,7 @@ void PermutohedralLattice::splat(float * positions, float * values){
         }
 
         splat_point(refPtr, col);
-        refPtr += d;
+        refPtr += pd;
     }
     delete[] col;
 }
@@ -194,11 +193,11 @@ void PermutohedralLattice::splat(float * positions, float * values){
  * containing each position vector were calculated and stored in the splatting step.
  * We may reuse this to accelerate the algorithm. (See pg. 6 in paper.)
  */
-void PermutohedralLattice::slice_point(float *col) {
+void PermutohedralLatticeCPU::slice_point(float *col) {
     float *base = hashTable.getValues();
     for (int j = 0; j < vd; j++)
         col[j] = 0;
-    for (int i = 0; i <= d; i++) {
+    for (int i = 0; i <= pd; i++) {
         ReplayEntry r = replay[nReplay++];
         for (int j = 0; j < vd; j++) {
             col[j] += r.weight * base[r.offset + j];
@@ -206,7 +205,7 @@ void PermutohedralLattice::slice_point(float *col) {
     }
 }
 
-void PermutohedralLattice::slice(float * out){
+void PermutohedralLatticeCPU::slice(float * out){
 
     nReplay = 0;
 
@@ -216,7 +215,7 @@ void PermutohedralLattice::slice(float * out){
 
         float *base = hashTable.getValues();
         auto col = new float[vd]{0};
-        for (int i = 0; i <= d; i++) {
+        for (int i = 0; i <= pd; i++) {
             ReplayEntry r = replay[nReplay];
             nReplay++;
             for (int j = 0; j < vd; j++) {
@@ -236,11 +235,11 @@ void PermutohedralLattice::slice(float * out){
 
 
 /* Performs a Gaussian blur along each projected axis in the hyperplane. */
-void PermutohedralLattice::blur() {
+void PermutohedralLatticeCPU::blur() {
 
     // Prepare arrays
-    auto *n1_key = new short[d + 1];
-    auto *n2_key = new short[d + 1];
+    auto *n1_key = new short[pd + 1];
+    auto *n2_key = new short[pd + 1];
 
     //old and new values contain the lattice points before and after blur
     auto *new_values = new float[vd * hashTable.size()];
@@ -251,18 +250,18 @@ void PermutohedralLattice::blur() {
     //for (int k = 0; k < vd; k++)
     //    zero[k] = 0;
 
-    // For each of d+1 axes,
-    for (int j = 0; j <= d; j++) {
+    // For each of pd+1 axes,
+    for (int j = 0; j <= pd; j++) {
         // For each vertex in the lattice,
         for (int i = 0; i < hashTable.size(); i++) { // blur point i in dimension j
 
-            short *key = hashTable.getKeys() + i * (d); // keys to current vertex
-            for (int k = 0; k < d; k++) {
+            short *key = hashTable.getKeys() + i * (pd); // keys to current vertex
+            for (int k = 0; k < pd; k++) {
                 n1_key[k] = key[k] + 1;
                 n2_key[k] = key[k] - 1;
             }
-            n1_key[j] = key[j] - d;
-            n2_key[j] = key[j] + d; // keys to the neighbors along the given axis.
+            n1_key[j] = key[j] - pd;
+            n2_key[j] = key[j] + pd; // keys to the neighbors along the given axis.
 
             float *oldVal = old_values + i * vd;
             float *newVal = new_values + i * vd;
@@ -304,11 +303,11 @@ void PermutohedralLattice::blur() {
 }
 
 
-PermutohedralLattice::PermutohedralLattice(int d_, int im_channels, int N_): d(d_), vd(im_channels + 1), N(N_),
-                                                                             hashTable(d_, im_channels + 1) {
+PermutohedralLatticeCPU::PermutohedralLatticeCPU(int pd_, int im_channels, int N_): pd(pd_), vd(im_channels + 1), N(N_),
+                                                                             hashTable(pd_, im_channels + 1) {
 
     // Allocate storage for various arrays
-    replay = new ReplayEntry[N * (d + 1)];
+    replay = new ReplayEntry[N * (pd + 1)];
     nReplay = 0;
 
     //lattice properties
@@ -317,12 +316,12 @@ PermutohedralLattice::PermutohedralLattice(int d_, int im_channels, int N_): d(d
 
     //arrays that are used in splatting, they are overwritten for each point but we only allocate once for speed
     // position embedded in subspace Hd
-    elevated = std::unique_ptr<float[]>(new float[d + 1]);
+    elevated = std::unique_ptr<float[]>(new float[pd + 1]);
     // remainder-0 and rank describe the enclosing simplex of a point
-    rem0 = std::unique_ptr<float[]>(new float[d + 1]);
-    rank = std::unique_ptr<short[]>(new short[d + 1]);
+    rem0 = std::unique_ptr<float[]>(new float[pd + 1]);
+    rank = std::unique_ptr<short[]>(new short[pd + 1]);
     // barycentric coordinates of position
-    barycentric = std::unique_ptr<float[]>(new float[d + 2]);
-
+    barycentric = std::unique_ptr<float[]>(new float[pd + 2]);
 
 }
+

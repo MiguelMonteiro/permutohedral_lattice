@@ -6,7 +6,10 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CUDA_STANDARD 11)
 set(CUDA_SEPARABLE_COMPILATION ON)
 
-add_executable(bilateral_cpu bilateral_cpu.cpp PermutohedralLattice.cpp PermutohedralLattice.h CImg.h utils.h)
+#just needed for Clion code indexing
+include_directories(/usr/local/cuda/include/)
+
+add_executable(bilateral_cpu bilateral_cpu.cpp PermutohedralLatticeCPU.cpp PermutohedralLatticeCPU.h CImg.h utils.h)
 if(UNIX AND NOT APPLE)
     set(LINUX TRUE)
 endif()
@@ -15,7 +18,7 @@ if (LINUX)
     target_link_libraries(bilateral_cpu PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 endif ()
 
-add_library(permutohedral STATIC permutohedral.cu hash_table.cu MirroredArray.h cuda_code_indexing.h)
+add_library(permutohedral STATIC permutohedral.cu)
 
 # Request that particles be built with -std=c++11
 # As this is a public compile feature anything that links to
@@ -41,7 +44,7 @@ endif()
 
 ##
 
-add_executable(compare_and_gpu compare_and_gpu.cpp CImg.h utils.h PermutohedralLattice.h PermutohedralLattice.cpp)
+add_executable(compare_and_gpu compare_and_gpu.cpp CImg.h utils.h PermutohedralLatticeCPU.h PermutohedralLatticeCPU.cpp)
 
 set_property(TARGET compare_and_gpu PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 target_link_libraries(compare_and_gpu PRIVATE permutohedral)

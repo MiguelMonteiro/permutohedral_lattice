@@ -12,17 +12,17 @@
 /* Hash table implementation for permutohedral lattice
  *
  * The lattice points are stored sparsely using a hash table.
- * The key for each point is its spatial location in the (d+1)-
+ * The key for each point is its spatial location in the (pd+1)-
  * dimensional space.
  */
 /***************************************************************/
-class HashTable {
+class HashTableCPU {
 public:
     /* Constructor
      *  pd_: the dimensionality of the position vectors on the hyperplane.
      *  vd_: the dimensionality of the value vectors
      */
-    HashTable(int pd_, int vd_) : pd(pd_), vd(vd_) {
+    HashTableCPU(int pd_, int vd_) : pd(pd_), vd(vd_) {
         capacity = 1 << 15;
         filled = 0;
         entries = new Entry[capacity];
@@ -156,10 +156,10 @@ private:
 };
 
 
-class PermutohedralLattice {
+class PermutohedralLatticeCPU {
 protected:
 
-    int d, vd, N;
+    int pd, vd, N;
     std::unique_ptr<int[]> canonical;
     std::unique_ptr<float[]> scaleFactor;
 
@@ -195,9 +195,9 @@ protected:
 
 public:
 
-    HashTable hashTable;
+    HashTableCPU hashTable;
 
-    PermutohedralLattice(int d_, int vd_, int N_);
+    PermutohedralLatticeCPU(int pd_, int vd_, int N_);
 
     void splat(float *positions, float *values);
 
@@ -205,6 +205,40 @@ public:
 
     void slice(float *out);
 };
+
+
+static void filter_cpu(float * im, float* ref, int ref_channels, int im_channels, int num_points){
+
+    timeval t[5];
+
+    // Create lattice
+    gettimeofday(t + 0, nullptr);
+    PermutohedralLatticeCPU lattice(ref_channels, im_channels, num_points);
+
+    // Splat into the lattice
+    gettimeofday(t + 1, nullptr);
+    printf("Splatting...\n");
+    lattice.splat(ref, im);
+
+
+    // Blur the lattice
+    gettimeofday(t + 2, nullptr);
+    printf("Blurring...");
+    lattice.blur();
+
+    // Slice from the lattice
+    gettimeofday(t + 3, nullptr);
+    printf("Slicing...\n");
+    lattice.slice(im);
+
+
+    // Print time elapsed for each step
+    gettimeofday(t + 4, nullptr);
+    const char *names[4] = {"Init  ", "Splat ", "Blur  ", "Slice "};
+    for (int i = 1; i < 5; i++)
+        printf("%s: %3.3f ms\n", names[i - 1], (t[i].tv_sec - t[i - 1].tv_sec) +
+                                               (t[i].tv_usec - t[i - 1].tv_usec) / 1000000.0);
+}
 
 
 #endif //PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H

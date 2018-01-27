@@ -6,8 +6,10 @@
 #include <ctime>
 #include "utils.h"
 
+
+
 //extern "C++" template<int pd, int vd> void permutohedral::filter(float *values, float *positions, int n);
-extern "C++" void filter(float *values, float *positions, int n);
+extern "C++" void filter(float *input, float *positions, int n);
 
 int main(int argc, char **argv) {
 
