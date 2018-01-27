@@ -244,13 +244,14 @@ __global__ static void createLattice(const int n,
         /*for (int i = 0; i < pd; i++)
             key[i] = static_cast<short>(rem0[i] + canonical[remainder * (pd + 1) + rank[i]]);*/
         for (int i = 0; i < pd; i++) {
-            key[i] = rem0[i] + remainder;
+            key[i] = static_cast<short>(rem0[i] + remainder);
             if (rank[i] > pd - remainder)
                 key[i] -= (pd + 1);
         }
 
         MatrixEntry r;
-        r.index = table.insert(key, idx * (pd + 1) + remainder);
+        unsigned int slot = static_cast<unsigned int>(idx * (pd + 1) + remainder);
+        r.index = table.insert(key, slot);
         r.weight = barycentric[remainder];
         matrix[idx * (pd + 1) + remainder] = r;
     }
@@ -377,7 +378,7 @@ __global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int co
     float *valOut = newValues + vd * idx;
 
     for (int i = 0; i < vd; i++)
-        valOut[i] = 0.25 * valNp[i] + 0.5 * valMe[i] + 0.25 * valNm[i];
+        valOut[i] = 0.25f * valNp[i] + 0.5f * valMe[i] + 0.25f * valNm[i];
 }
 
 template<int pd, int vd>
