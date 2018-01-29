@@ -28,8 +28,8 @@ int main(int argc, char **argv) {
     int N = image.width() * image.height();
     int sdims[2]{image.width(), image.height()};
 
-    auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
-    //auto positions = compute_bilateral_kernel(flat, N, 3, 2, sdims, 1.0/invSpatialStdev, 1.0/invColorStdev);
+    //auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
+    auto positions = compute_bilateral_kernel(flat, N, 3, 2, sdims, 1.0/invSpatialStdev, 1.0/invColorStdev);
 
 
     printf("Calling filter...\n");

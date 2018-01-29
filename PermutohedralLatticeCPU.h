@@ -224,12 +224,12 @@ static float* compute_bilateral_kernel(const float * reference,
 
         int divisor = 1;
         for(int sdim = 0; sdim < n_sdims; sdim++){
-            positions[num_dims * p + sdim] = (p / divisor % sdims[sdim]) / theta_alpha;
+            positions[num_dims * p + sdim] = ((p / divisor) % sdims[sdim]) / theta_alpha;
             divisor *= sdims[sdim];
         }
 
         for(int channel = 0; channel < reference_channels; channel++){
-            positions[num_dims * p + n_sdims + channel] = reference[p*reference_channels + channel] / theta_beta;
+            positions[num_dims * p + n_sdims + channel] = reference[p * reference_channels + channel] / theta_beta;
         }
     }
     return positions;
