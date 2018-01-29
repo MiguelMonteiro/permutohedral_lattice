@@ -9,6 +9,17 @@ set(CUDA_SEPARABLE_COMPILATION ON)
 #just needed for Clion code indexing
 include_directories(/usr/local/cuda/include/)
 
+#tensorflow
+execute_process(COMMAND bash -c "python2 -c 'import tensorflow as tf; print(tf.sysconfig.get_include())'" OUTPUT_VARIABLE TF_INC)
+execute_process(COMMAND bash -c "python2 -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())'" OUTPUT_VARIABLE TF_LIB)
+include_directories(${TF_INC})
+include_directories(${TF_INC}/external/nsync/public)
+link_directories(${TF_LIB})
+message(${TF_INC})
+message(${TF_LIB})
+
+
+
 add_executable(bilateral_cpu bilateral_cpu.cpp PermutohedralLatticeCPU.cpp PermutohedralLatticeCPU.h CImg.h utils.h)
 if(UNIX AND NOT APPLE)
     set(LINUX TRUE)
@@ -54,3 +65,21 @@ if(APPLE)
     # so that the static cuda runtime can find it at runtime.
     set_property(TARGET compare_and_gpu PROPERTY BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
 endif()
+
+
+####
+add_executable(kernel BilateralKernel.cpp BilateralKernel.h BilateralKernel.cu.cpp)
+
+
+####
+
+# CPU executable
+
+#if (LINUX)
+#    find_package(Threads REQUIRED)
+#    target_link_libraries(bilateral_cpu PRIVATE tensorflow_framework ${CMAKE_THREAD_LIBS_INIT}) #needed for CImg
+#else()
+#    target_link_libraries(bilateral_cpu PRIVATE tensorflow_framework)
+#endif ()
+
+

@@ -207,6 +207,8 @@ public:
 };
 
 
+static float *compute_kernel(float * image){}
+
 static void filter_cpu(float * im, float* ref, int ref_channels, int im_channels, int num_points){
 
     timeval t[5];
