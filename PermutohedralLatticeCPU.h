@@ -162,7 +162,7 @@ protected:
     int pd, vd, N;
     std::unique_ptr<int[]> canonical;
     std::unique_ptr<float[]> scaleFactor;
-
+    HashTableCPU hashTable;
     std::unique_ptr<float[]> elevated;
     std::unique_ptr<float[]> rem0;
     std::unique_ptr<short[]> rank;
@@ -192,54 +192,52 @@ protected:
 
     void slice_point(float *col);
 
-
-public:
-
-    HashTableCPU hashTable;
-
-    PermutohedralLatticeCPU(int pd_, int vd_, int N_);
-
     void splat(float *positions, float *values);
 
     void blur();
 
     void slice(float *out);
+
+public:
+
+
+    PermutohedralLatticeCPU(int pd_, int vd_, int N_);
+
+
+    void filter(float * input, float * positions);
 };
 
 
-static float *compute_kernel(float * image){}
 
-static void filter_cpu(float * im, float* ref, int ref_channels, int im_channels, int num_points){
+static float* compute_bilateral_kernel(const float * reference,
+                                       int num_super_pixels,
+                                       int reference_channels,
+                                       int n_sdims,
+                                       const int *sdims,
+                                       float theta_alpha,
+                                       float theta_beta){
 
-    timeval t[5];
+    int num_dims = n_sdims + reference_channels;
+    auto positions= new float[num_super_pixels * num_dims];
 
-    // Create lattice
-    gettimeofday(t + 0, nullptr);
-    PermutohedralLatticeCPU lattice(ref_channels, im_channels, num_points);
+    for(int p = 0; p < num_super_pixels; p++){
 
-    // Splat into the lattice
-    gettimeofday(t + 1, nullptr);
-    printf("Splatting...\n");
-    lattice.splat(ref, im);
+        int divisor = 1;
+        for(int sdim = 0; sdim < n_sdims; sdim++){
+            positions[num_dims * p + sdim] = (p / divisor % sdims[sdim]) / theta_alpha;
+            divisor *= sdims[sdim];
+        }
 
+        for(int channel = 0; channel < reference_channels; channel++){
+            positions[num_dims * p + n_sdims + channel] = reference[p*reference_channels + channel] / theta_beta;
+        }
+    }
+    return positions;
+};
 
-    // Blur the lattice
-    gettimeofday(t + 2, nullptr);
-    printf("Blurring...");
-    lattice.blur();
-
-    // Slice from the lattice
-    gettimeofday(t + 3, nullptr);
-    printf("Slicing...\n");
-    lattice.slice(im);
-
-
-    // Print time elapsed for each step
-    gettimeofday(t + 4, nullptr);
-    const char *names[4] = {"Init  ", "Splat ", "Blur  ", "Slice "};
-    for (int i = 1; i < 5; i++)
-        printf("%s: %3.3f ms\n", names[i - 1], (t[i].tv_sec - t[i - 1].tv_sec) +
-                                               (t[i].tv_usec - t[i - 1].tv_usec) / 1000000.0);
+static void lattice_filter_cpu(float *input, float *positions, int pd, int vd, int n){
+    PermutohedralLatticeCPU lattice(pd, vd, n);
+    lattice.filter(input, positions);
 }
 
 

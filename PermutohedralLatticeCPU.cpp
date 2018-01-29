@@ -5,7 +5,6 @@
 #include <memory>
 #include <iostream>
 #include <memory>
-#include <sys/time.h>
 #include "PermutohedralLatticeCPU.h"
 
 std::unique_ptr<int[]> PermutohedralLatticeCPU::compute_canonical_simplex() {
@@ -303,8 +302,8 @@ void PermutohedralLatticeCPU::blur() {
 }
 
 
-PermutohedralLatticeCPU::PermutohedralLatticeCPU(int pd_, int im_channels, int N_): pd(pd_), vd(im_channels + 1), N(N_),
-                                                                             hashTable(pd_, im_channels + 1) {
+PermutohedralLatticeCPU::PermutohedralLatticeCPU(int pd_, int vd_, int N_): pd(pd_), vd(vd_), N(N_),
+                                                                             hashTable(pd_, vd_) {
 
     // Allocate storage for various arrays
     replay = new ReplayEntry[N * (pd + 1)];
@@ -323,5 +322,11 @@ PermutohedralLatticeCPU::PermutohedralLatticeCPU(int pd_, int im_channels, int N
     // barycentric coordinates of position
     barycentric = std::unique_ptr<float[]>(new float[pd + 2]);
 
+}
+
+void PermutohedralLatticeCPU::filter(float* input, float* positions) {
+    splat(positions, input);
+    blur();
+    slice(input);
 }
 

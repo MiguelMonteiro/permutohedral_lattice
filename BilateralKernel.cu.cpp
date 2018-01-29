@@ -6,7 +6,7 @@
 
 #include "tensorflow/core/util/cuda_kernel_helper.h"
 #include "tensorflow/core/framework/op_kernel.h"
-#include "permutohedral.cu"
+#include "PermutohedralLatticeGPU.cu"
 
 using namespace tensorflow;
 

@@ -5,11 +5,7 @@
 #include "CImg.h"
 #include <ctime>
 #include "utils.h"
-
-
-
-//extern "C++" template<int pd, int vd> void permutohedral::filter(float *values, float *positions, int n);
-extern "C++" void filter(float *input, float *positions, int n);
+#include "bilateral_filter_gpu.h"
 
 int main(int argc, char **argv) {
 
@@ -36,7 +32,7 @@ int main(int argc, char **argv) {
 	// Filter the image with respect to the position vectors.
 	printf("Calling filter...\n");
 	std:clock_t begin = std::clock();
-    filter(flat, positions, N);
+    bilateral_filter_gpu(flat, positions, 5, 3, N);
 	std::clock_t end = std::clock();
 	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 	printf("%f seconds\n", elapsed_secs);

@@ -10,7 +10,7 @@
 #include "cuda_code_indexing.h"
 #include <ctime>
 #include <sys/time.h>
-
+#include <stdexcept>
 
 template<int pd, int vd>class HashTableGPU{
 public:
@@ -536,24 +536,8 @@ public:
 
 template<int pd, int vd>
 void filter_(float *input, float *positions, int n) {
-
-    //allocate memory in the GPU, ideally this will be handled by tensorflow later
-    float * input_gpu = nullptr;
-    float * positions_gpu = nullptr;
-
-    cudaMalloc((void**)&(input_gpu), n*(vd-1)*sizeof(float));
-    cudaMemcpy(input_gpu, input, n*(vd-1)*sizeof(float), cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&(positions_gpu), n*pd*sizeof(float));
-    cudaMemcpy(positions_gpu, positions, n*pd*sizeof(float), cudaMemcpyHostToDevice);
-
     auto lattice = PermutohedralLatticeGPU<pd, vd>(n);
-    lattice.filter(input_gpu, positions_gpu);
-
-    cudaMemcpy(input, input_gpu, n*(vd-1)*sizeof(float), cudaMemcpyDeviceToHost);
-
-    cudaFree(input_gpu);
-    cudaFree(positions_gpu);
+    lattice.filter(input, positions);
 
 }
 
@@ -565,10 +549,13 @@ __declspec(dllexport)
 #endif
 #endif
 
-void filter(float *input, float *positions, int n) {
+//input and positions should be device pointers by this point
+void lattice_filter_gpu(float *input, float *positions, int pd, int vd, int n) {
     //vd = image_channels + 1
-
-    filter_<5, 4>(input, positions, n);
+    if(pd == 5 && vd == 4)
+        filter_<5, 4>(input, positions, n);
+    else
+        throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);
 }
 
 

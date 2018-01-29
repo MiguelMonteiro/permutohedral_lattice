@@ -5,11 +5,9 @@
 #include "CImg.h"
 #include <ctime>
 #include "utils.h"
-#include "PermutohedralLatticeCPU.h"
+#include "bilateral_filter_gpu.h"
+#include "bilateral_filter_cpu.h"
 #include <sys/time.h>
-
-extern "C++" void filter(float *input, float *positions, int n);
-
 
 int main(int argc, char **argv) {
 
@@ -41,8 +39,8 @@ int main(int argc, char **argv) {
     //GPU
     {
         printf("Calling filter GPU...\n");
-        std:clock_t begin = std::clock();
-        filter(flat_gpu, positions, N);
+        std::clock_t begin = std::clock();
+        bilateral_filter_gpu(flat_gpu, positions, 5, 3, N);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         printf("Measured from function call: %f seconds\n", elapsed_secs);
@@ -53,7 +51,7 @@ int main(int argc, char **argv) {
     {
         printf("Calling filter...\n");
         std::clock_t begin = std::clock();
-        filter_cpu(flat_cpu, positions, 5, 3, N);
+        bilateral_filter_cpu(flat_cpu, positions, 5, 3, N);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         printf("Measured from function call: %f seconds\n", elapsed_secs);
