@@ -209,7 +209,7 @@ public:
 
 
 
-static float* compute_bilateral_kernel(const float * reference,
+static float* compute_bilateral_kernel_cpu(const float * reference,
                                        int num_super_pixels,
                                        int reference_channels,
                                        int n_sdims,

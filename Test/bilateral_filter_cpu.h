@@ -14,7 +14,7 @@ static void bilateral_filter_cpu(float *input,
     int vd = n_input_channels + 1;
     int n = num_super_pixels;
 
-    auto positions = compute_bilateral_kernel(input, n, 3, 2, sdims, theta_alpha, theta_beta);
+    auto positions = compute_bilateral_kernel_cpu(input, n, 3, 2, sdims, theta_alpha, theta_beta);
 
     lattice_filter_cpu(input, positions, pd, vd, n);
 
