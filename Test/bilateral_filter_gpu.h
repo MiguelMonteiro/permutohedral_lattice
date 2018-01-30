@@ -9,9 +9,9 @@ extern "C++" void lattice_filter_gpu(float *input, float *positions, int pd, int
 extern "C++" void compute_bilateral_kernel_gpu(const float * reference,
                                                  float * positions,
                                                  int num_super_pixels,
-                                                 int reference_channels,
-                                                 int n_sdims,
-                                                 const int *sdims,
+                                                 int n_reference_channels,
+                                                 int n_spatial_dims,
+                                                 const int *spatial_dims,
                                                  float theta_alpha,
                                                  float theta_beta);
 

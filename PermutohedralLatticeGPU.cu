@@ -584,17 +584,17 @@ void lattice_filter_gpu(float *input, float *positions, int pd, int vd, int n) {
 }
 
 void compute_bilateral_kernel_gpu(const float * reference,
-                                    float * positions,
-                                    int num_super_pixels,
-                                    int reference_channels,
-                                    int n_sdims,
-                                    const int *sdims,
-                                    float theta_alpha,
-                                    float theta_beta){
+                                  float * positions,
+                                  int num_super_pixels,
+                                  int n_reference_channels,
+                                  int n_spatial_dims,
+                                  const int *spatial_dims,
+                                  float theta_alpha,
+                                  float theta_beta){
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
-    compute_bilateral_kernel<<<blocks, blockSize>>>(reference, positions, num_super_pixels, reference_channels, n_sdims, sdims, theta_alpha, theta_beta);
+    compute_bilateral_kernel<<<blocks, blockSize>>>(reference, positions, num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, theta_alpha, theta_beta);
 };
 
 

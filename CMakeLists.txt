@@ -16,13 +16,15 @@ include_directories(/usr/local/cuda/include/)
 #tensorflow
 #execute_process(COMMAND bash -c "python2 -c 'import tensorflow as tf; print(tf.sysconfig.get_include())'" OUTPUT_VARIABLE TF_INC)
 #execute_process(COMMAND bash -c "python2 -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())'" OUTPUT_VARIABLE TF_LIB)
-#include_directories(${TF_INC})
-#include_directories(${TF_INC}/external/nsync/public)
-#link_directories(${TF_LIB})
-#message(${TF_INC})
-#message(${TF_LIB})
 
+execute_process(COMMAND python2 -c "import tensorflow as tf;  print(tf.sysconfig.get_include())" OUTPUT_VARIABLE TF_INC)
+execute_process(COMMAND python2 -c "import tensorflow as tf; print(tf.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIB)
+string(REGEX REPLACE "\n$" "" TF_INC "${TF_INC}")
+string(REGEX REPLACE "\n$" "" TF_LIB "${TF_LIB}")
 
+include_directories(${TF_INC})
+include_directories(${TF_INC}/external/nsync/public)
+link_directories(${TF_LIB})
 
 
 # CPU Test executable
@@ -95,8 +97,9 @@ endif()
 
 
 ####
-#add_executable(kernel BilateralKernel.cpp BilateralKernel.h BilateralKernel.cu.cpp)
 
+add_executable(cuda_kernel.o BilateralKernel.cu PermutohedralLatticeGPU.cu BilateralKernel.h)
+target_compile_options(cuda_kernel.o PUBLIC "-D GOOGLE_CUDA=1")
 
 ####
 

@@ -17,7 +17,8 @@ static void bilateral_filter_cpu(float *input,
     int n = num_super_pixels;
 
     printf("Constructing kernel...\n");
-    auto positions = compute_bilateral_kernel_cpu(input, n, 3, 2, sdims, theta_alpha, theta_beta);
+    auto positions= new float[num_super_pixels * pd];
+    compute_bilateral_kernel_cpu(input, positions, n, 3, 2, sdims, theta_alpha, theta_beta);
 
     printf("Calling filter...\n");
     lattice_filter_cpu(input, positions, pd, vd, n);

@@ -5,19 +5,38 @@
 #ifndef PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H
 #define PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H
 
+#include "tensorflow/core/framework/op_kernel.h"
 
-template <typename Device, typename T>
+template<typename Device, typename T>
 struct ExampleFunctor {
-    void operator()(const Device& d, int ref_channels, int input_channels, int num_super_pixels, const T* input, T* image);
+    void operator()(const Device &d,
+                    T *input,
+                    T *reference_image,
+                    int num_super_pixels,
+                    int n_spatial_dims,
+                    int *spatial_dims,
+                    int n_input_channels,
+                    int n_reference_channels,
+                    float theta_alpha,
+                    float theta_beta);
 };
-
+/*
 #if GOOGLE_CUDA
 // Partially specialize functor for GpuDevice.
 template <typename Eigen::GpuDevice, typename T>
 struct ExampleFunctor {
-  void operator()(const Eigen::GpuDevice& d, int size, const T* in, T* out);
+      void operator()(const Eigen::GpuDevice& d,
+                    T *input,
+                    T *reference_image,
+                    int num_super_pixels,
+                    int n_spatial_dims,
+                    int *spatial_dims,
+                    int n_input_channels,
+                    int n_reference_channels,
+                    float theta_alpha,
+                    float theta_beta);
 };
-#endif
+#endif*/
 
 
 #endif //PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H

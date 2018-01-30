@@ -10,9 +10,6 @@ float * get_flat_float_from_image(cimg_library::CImg<unsigned char> image, float
     //dim0 = y dim1=x
     auto flat = new float[image.width() * image.height() * 3]{0};
     int idx{0};
-    printf("%d\n", image.width());
-    printf("%d\n", image.height());
-
     for(int y=0; y < image.height(); ++y){
         for(int x=0; x < image.width(); ++x){
             for (int channel=0; channel < 3; ++channel){

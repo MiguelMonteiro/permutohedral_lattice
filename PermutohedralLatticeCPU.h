@@ -209,30 +209,27 @@ public:
 
 
 
-static float* compute_bilateral_kernel_cpu(const float * reference,
-                                       int num_super_pixels,
-                                       int reference_channels,
-                                       int n_sdims,
-                                       const int *sdims,
-                                       float theta_alpha,
-                                       float theta_beta){
+static void compute_bilateral_kernel_cpu(const float * reference,
+                                           float * positions,
+                                           int num_super_pixels,
+                                           int reference_channels,
+                                           int n_sdims,
+                                           const int *sdims,
+                                           float theta_alpha,
+                                           float theta_beta){
 
     int num_dims = n_sdims + reference_channels;
-    auto positions= new float[num_super_pixels * num_dims];
 
     for(int p = 0; p < num_super_pixels; p++){
-
         int divisor = 1;
         for(int sdim = 0; sdim < n_sdims; sdim++){
             positions[num_dims * p + sdim] = ((p / divisor) % sdims[sdim]) / theta_alpha;
             divisor *= sdims[sdim];
         }
-
         for(int channel = 0; channel < reference_channels; channel++){
             positions[num_dims * p + n_sdims + channel] = reference[p * reference_channels + channel] / theta_beta;
         }
     }
-    return positions;
 };
 
 static void lattice_filter_cpu(float *input, float *positions, int pd, int vd, int n){

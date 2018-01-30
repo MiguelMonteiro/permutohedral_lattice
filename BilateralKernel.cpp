@@ -15,10 +15,32 @@ using GPUDevice = Eigen::GpuDevice;
 // CPU specialization of actual computation.
 template <typename T>
 struct ExampleFunctor<CPUDevice, T> {
-    void operator()(const CPUDevice& d, int ref_channels, int input_channels, int num_super_pixels, const T* input, T* image) {
+    void operator()(const CPUDevice& d,
+                    T *input,
+                    T *reference_image,
+                    int num_super_pixels,
+                    int n_spatial_dims,
+                    int *spatial_dims,
+                    int n_input_channels,
+                    int n_reference_channels,
+                    float theta_alpha,
+                    float theta_beta) {
 
-        auto reference = compute_kernel(image);
-        filter_cpu(input, reference, ref_channels, input_channels, num_super_pixels);
+        auto positions = compute_bilateral_kernel_cpu(reference_image,
+                                                      num_super_pixels,
+                                                      n_reference_channels,
+                                                      n_spatial_dims,
+                                                      spatial_dims,
+                                                      theta_alpha,
+                                                      theta_beta);
+
+        int pd = n_reference_channels + n_sdims;
+        int vd = n_input_channels + 1;
+        int n = num_super_pixels;
+
+        lattice_filter_cpu(input, positions, pd, vd, n);
+
+        delete[] positions;
     }
 };
 
@@ -60,10 +82,8 @@ public:
 };
 
 // Register the CPU kernels.
-#define REGISTER_CPU(T)                                          \
-  REGISTER_KERNEL_BUILDER(                                       \
-      Name("Bilateral").Device(DEVICE_CPU).TypeConstraint<T>("T"), \
-      BilateralOp<CPUDevice, T>);
+#define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_CPU).TypeConstraint<T>("T"), BilateralOp<CPUDevice, T>);
+
 REGISTER_CPU(float);
 REGISTER_CPU(int32);
 
