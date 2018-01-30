@@ -1,13 +1,13 @@
 // kernel_example.cu.cc
 //#define GOOGLE_CUDA 1
-#define GOOGLE_CUDA
+
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
 #include "BilateralKernel.h"
 
 #include "tensorflow/core/framework/op_kernel.h"
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
-
+#include "PermutohedralLatticeGPU.cu"
 
 using namespace tensorflow;
 

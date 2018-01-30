@@ -22,6 +22,7 @@ execute_process(COMMAND python2 -c "import tensorflow as tf; print(tf.sysconfig.
 string(REGEX REPLACE "\n$" "" TF_INC "${TF_INC}")
 string(REGEX REPLACE "\n$" "" TF_LIB "${TF_LIB}")
 
+#[[
 # CPU Test executable
 add_executable(bilateral_cpu_test
         Test/bilateral_cpu_test.cpp
@@ -90,22 +91,28 @@ if(APPLE)
 endif()
 
 
-
+]]
 ####
 
 
 
-#[[
+#[[ ]]
 # CUDA Library
-find_package(Eigen3 REQUIRED)
-add_library(cuda_kernel.o STATIC BilateralKernel.cu PermutohedralLatticeGPU.cu)
-target_compile_features(cuda_kernel.o  PUBLIC cxx_std_11)
-#set_target_properties(cuda_kernel.o  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-target_compile_options(cuda_kernel.o  PUBLIC "-D GOOGLE_CUDA=1 -D_MWAITXINTRIN_H_INCLUDED")
-target_include_directories(cuda_kernel.o INTERFACE ${EIGEN3_INCLUDE_DIR} PRIVATE ${TF_INC} ${TF_INC}/external/nsync/public)
+#find_package(Eigen3 REQUIRED)
+#add_library(cuda_kernel.o STATIC BilateralKernel.cu PermutohedralLatticeGPU.cu)
+add_executable(cuda_kernel.o BilateralKernel.cu PermutohedralLatticeGPU.cu)
+target_compile_features(cuda_kernel.o PUBLIC cxx_std_11)
+set_target_properties(cuda_kernel.o  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+#target_compile_options(cuda_kernel.o  PUBLIC "-D GOOGLE_CUDA=1 -D_MWAITXINTRIN_H_INCLUDED")
+target_compile_options(cuda_kernel.o PUBLIC "-D GOOGLE_CUDA=1")
+#target_include_directories(cuda_kernel.o PRIVATE ${TF_INC} ${TF_INC}/external/nsync/public)
+
+#target_include_directories(cuda_kernel.o INTERFACE ${EIGEN3_INCLUDE_DIR} PRIVATE ${TF_INC} ${TF_INC}/external/nsync/public)
 #link_directories(${TF_LIB})
 
-]]
+
+
+
 ####
 
 

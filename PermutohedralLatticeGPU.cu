@@ -5,8 +5,9 @@
 #define DEBUG 0
 
 
-#include <stdio.h>
-//#include "cuda_code_indexing.h"
+#include <cstdio>
+#include "cuda_code_indexing.h"
+#include "cuda_runtime.h"
 #include <stdexcept>
 
 template<int pd, int vd>class HashTableGPU{
