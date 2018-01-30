@@ -17,22 +17,24 @@ int main(int argc, char **argv) {
 	float pixel_depth = 255.0;
 
 	cimg_library::CImg<unsigned char> image(argv[1]);
+    int N = image.width() * image.height();
+    int sdims[2]{image.width(), image.height()};
+
     auto flat = get_flat_float_from_image(image, pixel_depth);
 
-    float invSpatialStdev = 1.0f / atof(argv[3]);
-    float invColorStdev = 1.0f / atof(argv[4]);
+    //float invSpatialStdev = 1.0f / atof(argv[3]);
+    //float invColorStdev = 1.0f / atof(argv[4]);
 
-    printf("Constructing inputs...\n");
+    //printf("Constructing inputs...\n");
     // Construct the position vectors out of x, y, r, g, and b.
-    auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
-
-    int N = image.width() * image.height();
-
+    //uto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
+    float theta_alpha = atof(argv[3]);
+    float theta_beta = atof(argv[4]);
 
 	// Filter the image with respect to the position vectors.
 	printf("Calling filter...\n");
 	std:clock_t begin = std::clock();
-    bilateral_filter_gpu(flat, positions, 5, 3, N);
+    bilateral_filter_gpu(flat, 3, 2, sdims, N, theta_alpha, theta_beta);
 	std::clock_t end = std::clock();
 	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
 	printf("%f seconds\n", elapsed_secs);
@@ -40,7 +42,6 @@ int main(int argc, char **argv) {
     save_output(flat, image, argv[2], pixel_depth);
 
     delete[] flat;
-    delete[] positions;
     return 0;
 
 }

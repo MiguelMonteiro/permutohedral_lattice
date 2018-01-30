@@ -37,27 +37,23 @@ int main(int argc, char **argv) {
     float theta_alpha = atof(argv[2]);
     float theta_beta = atof(argv[3]);
 
-    float invSpatialStdev = 1.0f /theta_alpha;
-    float invColorStdev = 1.0f /theta_beta;
-
-
+    //float invSpatialStdev = 1.0f /theta_alpha;
+    //float invColorStdev = 1.0f /theta_beta;
     // Construct the position vectors out of x, y, r, g, and b.
-    auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
+    //auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
 
-    auto positions_cpu = compute_bilateral_kernel(flat_cpu, N, 3, 2, sdims, theta_alpha, theta_beta);
-
-    double diff=0;
+    /*double diff=0;
     for(int i =0; i< 5*N; i++){
-        diff += positions_cpu[i] - positions[i];
+        diff += positions_cpu[i] - positions_gpu[i];
     }
     std::cout.precision(17);
-    std::cout << "diff: " << diff +0.1 << std::endl;
+    std::cout << "diff: " << diff +0.1 << std::endl;*/
 
     //GPU
     {
         printf("Calling filter GPU...\n");
         std::clock_t begin = std::clock();
-        bilateral_filter_gpu(flat_gpu, positions_cpu, 5, 3, N);
+        bilateral_filter_gpu(flat_gpu, 3, 2, sdims, N, theta_alpha, theta_beta);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         printf("Measured from function call: %f seconds\n", elapsed_secs);
@@ -68,11 +64,12 @@ int main(int argc, char **argv) {
     {
         printf("Calling filter...\n");
         std::clock_t begin = std::clock();
-        bilateral_filter_cpu(flat_cpu, positions_cpu, 5, 3, N);
+        bilateral_filter_cpu(flat_cpu, 3, 2, sdims, N, theta_alpha, theta_beta);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         printf("Measured from function call: %f seconds\n", elapsed_secs);
     }
+
     printf("new here\n");
     int tol{0};
     int wrong_pixels{0};
@@ -89,8 +86,6 @@ int main(int argc, char **argv) {
 
     delete[] flat_cpu;
     delete[] flat_gpu;
-    delete[] positions;
-    delete[] positions_cpu;
 
     return 0;
 }

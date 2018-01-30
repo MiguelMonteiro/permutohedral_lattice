@@ -541,6 +541,31 @@ void filter_(float *input, float *positions, int n) {
 
 }
 
+__global__ static void compute_bilateral_kernel(const float * reference,
+                                                float * positions,
+                                                int num_super_pixels,
+                                                int reference_channels,
+                                                int n_sdims,
+                                                const int *sdims,
+                                                float theta_alpha,
+                                                float theta_beta){
+
+    const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= num_super_pixels)
+        return;
+
+    int num_dims = n_sdims + reference_channels;
+    int divisor = 1;
+    for(int sdim = 0; sdim < n_sdims; sdim++){
+        positions[num_dims * idx + sdim] = ((idx / divisor) % sdims[sdim]) / theta_alpha;
+        divisor *= sdims[sdim];
+    }
+
+    for(int channel = 0; channel < reference_channels; channel++){
+        positions[num_dims * idx + n_sdims + channel] = reference[idx * reference_channels + channel] / theta_beta;
+    }
+
+}
 
 #ifdef LIBRARY
 extern "C++"
@@ -557,6 +582,20 @@ void lattice_filter_gpu(float *input, float *positions, int pd, int vd, int n) {
     else
         throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);
 }
+
+void compute_bilateral_kernel_gpu(const float * reference,
+                                    float * positions,
+                                    int num_super_pixels,
+                                    int reference_channels,
+                                    int n_sdims,
+                                    const int *sdims,
+                                    float theta_alpha,
+                                    float theta_beta){
+
+    dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
+    dim3 blockSize(BLOCK_SIZE, 1, 1);
+    compute_bilateral_kernel<<<blocks, blockSize>>>(reference, positions, num_super_pixels, reference_channels, n_sdims, sdims, theta_alpha, theta_beta);
+};
 
 
 #endif //PERMUTOHEDRAL_CU
