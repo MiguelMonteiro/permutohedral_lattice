@@ -4,12 +4,9 @@
 #define BLOCK_SIZE 256
 #define DEBUG 0
 
-#include <cuda_runtime.h>
+
 #include <stdio.h>
-#include <string>
-#include "cuda_code_indexing.h"
-#include <ctime>
-#include <sys/time.h>
+//#include "cuda_code_indexing.h"
 #include <stdexcept>
 
 template<int pd, int vd>class HashTableGPU{
