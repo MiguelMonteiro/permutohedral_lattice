@@ -5,7 +5,6 @@
 
 #include <cuda_runtime.h>
 
-//extern "C++" template<int pd, int vd> void permutohedral::filter(float *values, float *positions, int n);
 extern "C++" void lattice_filter_gpu(float *input, float *positions, int pd, int vd, int n);
 extern "C++" void compute_bilateral_kernel_gpu(const float * reference,
                                                  float * positions,
@@ -36,13 +35,13 @@ void bilateral_filter_gpu(float *input,
     cudaMalloc((void**)&(input_gpu), n*(vd-1)*sizeof(float));
     cudaMemcpy(input_gpu, input, n*(vd-1)*sizeof(float), cudaMemcpyHostToDevice);
     cudaMalloc((void**)&(positions_gpu), n*pd*sizeof(float));
-    //cudaMemcpy(positions_gpu, positions, n*pd*sizeof(float), cudaMemcpyHostToDevice);
     cudaMalloc((void**)&(sdims_gpu), n_sdims*sizeof(int));
     cudaMemcpy(sdims_gpu, spatial_dims, n_sdims*sizeof(int), cudaMemcpyHostToDevice);
 
-    // compute the bilateral kernel
+    printf("Constructing kernel...\n");
     compute_bilateral_kernel_gpu(input_gpu, positions_gpu, n, n_input_channels, n_sdims, sdims_gpu, theta_alpha, theta_beta);
 
+    printf("Calling filter...\n");
     lattice_filter_gpu(input_gpu, positions_gpu, pd, vd, n);
 
     cudaMemcpy(input, input_gpu, n*(vd-1)*sizeof(float), cudaMemcpyDeviceToHost);

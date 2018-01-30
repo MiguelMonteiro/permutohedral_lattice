@@ -14,9 +14,9 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	float pixel_depth = 255.0;
 
 	cimg_library::CImg<unsigned char> image(argv[1]);
+    float pixel_depth = 255.0;
     int N = image.width() * image.height();
     int sdims[2]{image.width(), image.height()};
 
@@ -27,17 +27,15 @@ int main(int argc, char **argv) {
 
     //printf("Constructing inputs...\n");
     // Construct the position vectors out of x, y, r, g, and b.
-    //uto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
+    //auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
     float theta_alpha = atof(argv[3]);
     float theta_beta = atof(argv[4]);
 
-	// Filter the image with respect to the position vectors.
-	printf("Calling filter...\n");
 	std:clock_t begin = std::clock();
     bilateral_filter_gpu(flat, 3, 2, sdims, N, theta_alpha, theta_beta);
 	std::clock_t end = std::clock();
-	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	printf("%f seconds\n", elapsed_secs);
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    printf("Measured from function call: %f seconds\n", elapsed_secs);
 
     save_output(flat, image, argv[2], pixel_depth);
 
