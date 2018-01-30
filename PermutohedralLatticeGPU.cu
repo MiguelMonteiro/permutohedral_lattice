@@ -2,7 +2,7 @@
 #define PERMUTOHEDRAL_CU
 
 #define BLOCK_SIZE 256
-#define DEBUG
+#define DEBUG 0
 
 #include <cuda_runtime.h>
 #include <stdio.h>
@@ -580,7 +580,8 @@ void lattice_filter_gpu(float *input, float *positions, int pd, int vd, int n) {
     if(pd == 5 && vd == 4)
         filter_<5, 4>(input, positions, n);
     else
-        throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);
+        return;
+        //throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);
 }
 
 void compute_bilateral_kernel_gpu(const float * reference,
