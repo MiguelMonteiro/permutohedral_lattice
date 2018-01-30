@@ -98,8 +98,13 @@ endif()
 
 ####
 
-add_executable(cuda_kernel.o BilateralKernel.cu PermutohedralLatticeGPU.cu BilateralKernel.h)
-target_compile_options(cuda_kernel.o PUBLIC "-D GOOGLE_CUDA=1")
+
+# CUDA Library
+add_library(cuda_kernel.o STATIC BilateralKernel.cu PermutohedralLatticeGPU.cu)
+target_compile_features(cuda_kernel.o  PUBLIC cxx_std_11)
+set_target_properties(cuda_kernel.o  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+target_compile_options(cuda_kernel.o  PUBLIC "-D GOOGLE_CUDA=1")
+target_link_libraries(cuda_kernel.o PRIVATE ${TF_LIB})
 
 ####
 

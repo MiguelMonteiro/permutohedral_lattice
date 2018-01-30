@@ -1,10 +1,11 @@
 // kernel_example.cu.cc
-
+#define GOOGLE_CUDA 1
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
 #include "BilateralKernel.h"
 
 #include "tensorflow/core/framework/op_kernel.h"
+//#include "tensorflow/core/util/cuda_kernel_helper.h"
 #include "PermutohedralLatticeGPU.cu"
 
 using namespace tensorflow;
@@ -50,6 +51,6 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
 
 // Explicitly instantiate functors for the types of OpKernels registered.
 template struct ExampleFunctor<GPUDevice, float>;
-template struct ExampleFunctor<GPUDevice, int32>;
+//template struct ExampleFunctor<GPUDevice, int32>;
 
 #endif  // GOOGLE_CUDA
