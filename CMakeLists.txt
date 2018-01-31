@@ -46,7 +46,7 @@ set_target_properties(cuda_bilateral  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 target_compile_options(cuda_bilateral PUBLIC "-D GOOGLE_CUDA=1")
 
 
-add_library(bilateral SHARED BilateralKernel.cpp BilateralKernel.h)
+add_library(bilateral SHARED BilateralKernel.cpp BilateralKernel.h PermutohedralLatticeCPU.cpp)
 target_compile_options(bilateral PUBLIC "-D GOOGLE_CUDA=1")
 target_link_libraries(bilateral PUBLIC tensorflow_framework cuda_bilateral)
 set_target_properties(bilateral PROPERTIES PREFIX "")

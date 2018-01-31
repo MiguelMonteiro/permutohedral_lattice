@@ -4,10 +4,26 @@
 
 #include "BilateralKernel.h"
 #include "PermutohedralLatticeCPU.h"
-
+#include "cstdio"
 #include "tensorflow/core/framework/op_kernel.h"
 
 using namespace tensorflow;
+
+#include "tensorflow/core/framework/op.h"
+#include "tensorflow/core/framework/shape_inference.h"
+
+using namespace tensorflow;
+
+REGISTER_OP("Bilateral")
+        .Attr("T: {float32}")
+        .Input("input_image: T")
+        .Input("reference_image: T")
+        .Output("output: T")
+        .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+            c->set_output(0, c->input(0));
+            return Status::OK();
+        });
+
 
 using CPUDevice = Eigen::ThreadPoolDevice;
 using GPUDevice = Eigen::GpuDevice;
@@ -84,6 +100,7 @@ public:
         int n_input_channels = input_tensor.dim_size(rank-1);
         int n_reference_channels = image_tensor.dim_size(rank-1);
 
+        printf("From the depths!!!\n");
         // Create an output tensor
         Tensor* output_tensor = nullptr;
         OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
@@ -115,6 +132,6 @@ REGISTER_CPU(float);
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
 /* Declare explicit instantiations in kernel_example.cu.cc. */
-#define REGISTER_GPU(T) extern template ExampleFunctor<GPUDevice, float>; REGISTER_KERNEL_BUILDER(Name("Example").Device(DEVICE_GPU).TypeConstraint<T>("T"), ExampleOp<GPUDevice, T>); REGISTER_GPU(float);
+#define REGISTER_GPU(T) extern template ExampleFunctor<GPUDevice, float>; REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_GPU).TypeConstraint<T>("T"), ExampleOp<GPUDevice, T>); REGISTER_GPU(float);
 //REGISTER_GPU(int32);
 #endif  // GOOGLE_CUDA

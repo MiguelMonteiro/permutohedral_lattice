@@ -4,10 +4,12 @@ from PIL import Image
 
 im = Image.open("../input.bmp")
 
-bilateral_module = tf.load_op_library('./bilateral.so')
+module = tf.load_op_library('./bilateral.so')
 
-input = tf.constant(np.array(im), dtype=tf.float32)
-output = bilateral_module(input)
+tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
+tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
+
+output = module.bilateral(tf_input_image, tf_reference_image)
 with tf.Session() as sess:
     o = sess.run(output)
 
