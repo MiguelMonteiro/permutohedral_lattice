@@ -43,10 +43,6 @@ struct ExampleFunctor<CPUDevice, T> {
                     float theta_alpha,
                     float theta_beta) {
 
-
-
-
-
         int pd = n_reference_channels + n_spatial_dims;
         int vd = n_input_channels + 1;
         int n = num_super_pixels;
@@ -85,9 +81,13 @@ public:
         int n_spatial_dims = rank -1;
         auto input_channels = static_cast<int>(input_tensor.dim_size(n_spatial_dims));
 
+        auto spatial_dims = new int[rank-1];
+
         int num_super_pixels{1};
-        for (int i = 0; i < n_spatial_dims; i++)
+        for (int i = 0; i < n_spatial_dims; i++){
             num_super_pixels *= input_tensor.dim_size(i);
+            spatial_dims[i] = static_cast<int>(input_tensor.dim_size(i));
+        }
 
         assert(image_tensor.dims() ==  rank);
         auto ref_channels = static_cast<int>(image_tensor.dim_size(n_spatial_dims));
@@ -95,12 +95,11 @@ public:
         float theta_alpha{8};
         float theta_beta{0.125};
         //int spatial_dims[2]{1000,800};
-        int * spatial_dims = reinterpret_cast<int *>(input_tensor.shape().dim_sizes().data());
+
         //int* spatial_dims = input_tensor.shape().dim_sizes().data();
         int n_input_channels = input_tensor.dim_size(rank-1);
         int n_reference_channels = image_tensor.dim_size(rank-1);
 
-        printf("From the depths!!!\n");
         // Create an output tensor
         Tensor* output_tensor = nullptr;
         OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
@@ -120,6 +119,7 @@ public:
                                     n_reference_channels,
                                     theta_alpha,
                                     theta_beta);
+        delete[](spatial_dims);
     }
 };
 
