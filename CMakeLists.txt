@@ -21,92 +21,35 @@ execute_process(COMMAND python2 -c "import tensorflow as tf;  print(tf.sysconfig
 execute_process(COMMAND python2 -c "import tensorflow as tf; print(tf.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIB)
 string(REGEX REPLACE "\n$" "" TF_INC "${TF_INC}")
 string(REGEX REPLACE "\n$" "" TF_LIB "${TF_LIB}")
+include_directories(${TF_INC} ${TF_INC}/external/nsync/public)
+link_directories(${TF_LIB})
 
-#[[
-# CPU Test executable
-add_executable(bilateral_cpu_test
-        Test/bilateral_cpu_test.cpp
-        Test/bilateral_filter_cpu.h
-        Test/CImg.h
-        Test/utils.h
-        PermutohedralLatticeCPU.cpp
-        PermutohedralLatticeCPU.h)
+set(TEST FALSE)
 
-if (LINUX)
-    find_package(Threads REQUIRED)
-    target_link_libraries(bilateral_cpu_test PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+if (TEST)
+    include(CMakeTests)
 endif ()
 
 
 
-# CUDA Library
-add_library(permutohedral STATIC PermutohedralLatticeGPU.cu)
-
-# Request that permutohedral be built with -std=c++11
-# As this is a public compile feature anything that links to
-# particles will also build with -std=c++11
-target_compile_features(permutohedral PUBLIC cxx_std_11)
-
-# We need to explicitly state that we need all CUDA files in the
-# permutohedral library to be built with -dc as the member functions
-# could be called by other libraries and executables
-set_target_properties(permutohedral PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-
-# GPU test executable
-add_executable(bilateral_gpu_test
-        Test/bilateral_gpu_test.cpp
-        Test/bilateral_filter_gpu.h
-        Test/CImg.h
-        Test/utils.h)
-
-
-set_property(TARGET bilateral_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-target_link_libraries(bilateral_gpu_test PRIVATE permutohedral)
-
-if(APPLE)
-    # We need to add the path to the driver (libcuda.dylib) as an rpath,
-    # so that the static cuda runtime can find it at runtime.
-    set_property(TARGET bilateral_gpu_test PROPERTY BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
-endif()
-
-
-# CPU and GPU compare executable
-
-add_executable(compare_and_gpu_test
-        Test/compare_and_gpu_test.cpp
-        Test/bilateral_filter_cpu.h
-        Test/bilateral_filter_gpu.h
-        Test/CImg.h
-        Test/utils.h
-        PermutohedralLatticeCPU.h
-        PermutohedralLatticeCPU.cpp)
-
-set_property(TARGET compare_and_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)
-target_link_libraries(compare_and_gpu_test PRIVATE permutohedral)
-
-if(APPLE)
-    # We need to add the path to the driver (libcuda.dylib) as an rpath,
-    # so that the static cuda runtime can find it at runtime.
-    set_property(TARGET compare_and_gpu_test PROPERTY BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
-endif()
-
-
-]]
 ####
 
 
-
-#[[ ]]
+#
 # CUDA Library
-#find_package(Eigen3 REQUIRED)
-#add_library(cuda_kernel.o STATIC BilateralKernel.cu PermutohedralLatticeGPU.cu)
-add_executable(cuda_kernel.o BilateralKernel.cu PermutohedralLatticeGPU.cu)
-target_compile_features(cuda_kernel.o PUBLIC cxx_std_11)
-set_target_properties(cuda_kernel.o  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-#target_compile_options(cuda_kernel.o  PUBLIC "-D GOOGLE_CUDA=1 -D_MWAITXINTRIN_H_INCLUDED")
-target_compile_options(cuda_kernel.o PUBLIC "-D GOOGLE_CUDA=1")
-#target_include_directories(cuda_kernel.o PRIVATE ${TF_INC} ${TF_INC}/external/nsync/public)
 
+
+add_library(cuda_bilateral SHARED BilateralKernel.cu BilateralKernel.h)
+target_compile_features(cuda_bilateral PUBLIC cxx_std_11)
+set_target_properties(cuda_bilateral  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+#target_compile_options(cuda_bilateral PUBLIC "-D GOOGLE_CUDA=1" "--expt-relaxed-constexpr")
+target_compile_options(cuda_bilateral PUBLIC "-D GOOGLE_CUDA=1")
+
+
+add_library(bilateral SHARED BilateralKernel.cpp BilateralKernel.h)
+target_compile_options(bilateral PUBLIC "-D GOOGLE_CUDA=1")
+target_link_libraries(bilateral PUBLIC tensorflow_framework cuda_bilateral)
+set_target_properties(bilateral PROPERTIES PREFIX "")
 #target_include_directories(cuda_kernel.o INTERFACE ${EIGEN3_INCLUDE_DIR} PRIVATE ${TF_INC} ${TF_INC}/external/nsync/public)
 #link_directories(${TF_LIB})
 

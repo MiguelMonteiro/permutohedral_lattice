@@ -1,5 +1,5 @@
 // kernel_example.cu.cc
-//#define GOOGLE_CUDA 1
+#define GOOGLE_CUDA 1
 
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
@@ -17,8 +17,9 @@ using GPUDevice = Eigen::GpuDevice;
 // Define the GPU implementation that launches the CUDA kernel.
 template <typename T>
 void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
-                                              T *input,
-                                              T *reference_image,
+                                              T* output,
+                                              const T *input,
+                                              const T *reference_image,
                                               int num_super_pixels,
                                               int n_spatial_dims,
                                               int *spatial_dims,
@@ -31,6 +32,12 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
     int vd = n_input_channels + 1;
     int n = num_super_pixels;
 
+    //
+    int* spatial_dims_gpu;
+    cudaMalloc((void**)&(spatial_dims_gpu), n*pd*sizeof(int));
+    cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
+
+    //float* positions = d.allocate(n*pd* sizeof(float));
     T* positions;
     cudaMalloc((void**)&(positions), n*pd*sizeof(float));
 
@@ -45,9 +52,10 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
 
 
 
-    lattice_filter_gpu(input, positions, pd, vd, n);
-
+    lattice_filter_gpu(output, input, positions, pd, vd, n);
+    //d.deallocate(positinos);
     cudaFree(positions);
+    cudaFree(spatial_dims_gpu);
 }
 
 // Explicitly instantiate functors for the types of OpKernels registered.

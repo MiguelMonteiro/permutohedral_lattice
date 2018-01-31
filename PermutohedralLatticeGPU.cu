@@ -6,7 +6,7 @@
 
 
 #include <cstdio>
-#include "cuda_code_indexing.h"
+//#include "cuda_code_indexing.h"
 #include "cuda_runtime.h"
 #include <stdexcept>
 
@@ -279,7 +279,7 @@ __global__ static void cleanHashTable(int n, HashTableGPU<pd, vd> table) {
 }
 
 template<int pd, int vd>
-__global__ static void splatCache(const int n, float *values, MatrixEntry *matrix, HashTableGPU<pd, vd> table) {
+__global__ static void splatCache(const int n, const float *values, MatrixEntry *matrix, HashTableGPU<pd, vd> table) {
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     const int threadId = threadIdx.x;
@@ -293,7 +293,7 @@ __global__ static void splatCache(const int n, float *values, MatrixEntry *matri
 
     if (!outOfBounds) {
 
-        float *value = values + idx * (vd - 1);
+        float *value = const_cast<float *>(values + idx * (vd - 1));
 
         MatrixEntry r = matrix[idx * (pd + 1) + color];
 
@@ -501,7 +501,7 @@ public:
     }
 #else
     // values and position must already be device pointers
-    void filter(float* inputs, float*  positions){
+    void filter(float* output, const float* inputs, const float*  positions){
 
         dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
         dim3 blockSize(BLOCK_SIZE, 1, 1);
@@ -524,7 +524,7 @@ public:
             std::swap(hashTable.values, newValues);
         }
         blockSize.y = 1;
-        slice<pd, vd><<< blocks, blockSize>>>(n, inputs, matrix, hashTable);
+        slice<pd, vd><<< blocks, blockSize>>>(n, output, matrix, hashTable);
         printf("Slice: %s\n", cudaGetErrorString(cudaGetLastError()));
     }
 
@@ -533,9 +533,9 @@ public:
 
 
 template<int pd, int vd>
-void filter_(float *input, float *positions, int n) {
+void filter_(float* output, const float *input, const float *positions, int n) {
     auto lattice = PermutohedralLatticeGPU<pd, vd>(n);
-    lattice.filter(input, positions);
+    lattice.filter(output, input, positions);
 
 }
 
@@ -565,6 +565,7 @@ __global__ static void compute_bilateral_kernel(const float * reference,
 
 }
 
+
 #ifdef LIBRARY
 extern "C++"
 #ifdef WIN32
@@ -572,11 +573,12 @@ __declspec(dllexport)
 #endif
 #endif
 
+
 //input and positions should be device pointers by this point
-void lattice_filter_gpu(float *input, float *positions, int pd, int vd, int n) {
+void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n) {
     //vd = image_channels + 1
     if(pd == 5 && vd == 4)
-        filter_<5, 4>(input, positions, n);
+        filter_<5, 4>(output, input, positions, n);
     else
         return;
         //throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);

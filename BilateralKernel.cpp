@@ -16,8 +16,9 @@ using GPUDevice = Eigen::GpuDevice;
 template <typename T>
 struct ExampleFunctor<CPUDevice, T> {
     void operator()(const CPUDevice& d,
-                    T *input,
-                    T *reference_image,
+                    T * output,
+                    const T *input,
+                    const T *reference_image,
                     int num_super_pixels,
                     int n_spatial_dims,
                     int *spatial_dims,
@@ -26,19 +27,26 @@ struct ExampleFunctor<CPUDevice, T> {
                     float theta_alpha,
                     float theta_beta) {
 
-        auto positions = compute_bilateral_kernel_cpu(reference_image,
-                                                      num_super_pixels,
-                                                      n_reference_channels,
-                                                      n_spatial_dims,
-                                                      spatial_dims,
-                                                      theta_alpha,
-                                                      theta_beta);
 
-        int pd = n_reference_channels + n_sdims;
+
+
+
+        int pd = n_reference_channels + n_spatial_dims;
         int vd = n_input_channels + 1;
         int n = num_super_pixels;
 
-        lattice_filter_cpu(input, positions, pd, vd, n);
+        auto positions= new float[num_super_pixels * pd];
+
+        compute_bilateral_kernel_cpu(reference_image,
+                                     positions,
+                                     num_super_pixels,
+                                     n_reference_channels,
+                                     n_spatial_dims,
+                                     spatial_dims,
+                                     theta_alpha,
+                                     theta_beta);
+
+        lattice_filter_cpu(output, input, positions, pd, vd, n);
 
         delete[] positions;
     }
@@ -58,26 +66,43 @@ public:
 
         // calculate dimensions; assumes channel is last dimension
         int rank = input_tensor.dims();
-        auto input_channels = static_cast<int>(input_tensor.dim_size(rank - 1));
+        int n_spatial_dims = rank -1;
+        auto input_channels = static_cast<int>(input_tensor.dim_size(n_spatial_dims));
 
         int num_super_pixels{1};
-        for (int i = 0; i < rank - 1; i++)
+        for (int i = 0; i < n_spatial_dims; i++)
             num_super_pixels *= input_tensor.dim_size(i);
 
         assert(image_tensor.dims() ==  rank);
-        auto ref_channels = static_cast<int>(image_tensor.dim_size(rank - 1));
+        auto ref_channels = static_cast<int>(image_tensor.dim_size(n_spatial_dims));
 
-
+        float theta_alpha{8};
+        float theta_beta{0.125};
+        //int spatial_dims[2]{1000,800};
+        int * spatial_dims = reinterpret_cast<int *>(input_tensor.shape().dim_sizes().data());
+        //int* spatial_dims = input_tensor.shape().dim_sizes().data();
+        int n_input_channels = input_tensor.dim_size(rank-1);
+        int n_reference_channels = image_tensor.dim_size(rank-1);
 
         // Create an output tensor
-        //Tensor* output_tensor = nullptr;
-        //OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
-
+        Tensor* output_tensor = nullptr;
+        OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
+        //OP_REQUIRES_OK(context, context->set_output(0, &input_tensor));
         // Do the computation.
         OP_REQUIRES(context, input_tensor.NumElements() <= tensorflow::kint32max, errors::InvalidArgument("Too many elements in tensor"));
 
-        ExampleFunctor<Device, T>()(
-                context->eigen_device<Device>(), ref_channels, input_channels, num_super_pixels, input_tensor.flat<T>().data(), image_tensor.flat<T>().data());
+
+        ExampleFunctor<Device, T>()(context->eigen_device<Device>(),
+                                    output_tensor->flat<T>().data(),
+                                    input_tensor.flat<T>().data(),
+                                    image_tensor.flat<T>().data(),
+                                    num_super_pixels,
+                                    n_spatial_dims,
+                                    spatial_dims,
+                                    n_input_channels,
+                                    n_reference_channels,
+                                    theta_alpha,
+                                    theta_beta);
     }
 };
 
@@ -85,16 +110,11 @@ public:
 #define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_CPU).TypeConstraint<T>("T"), BilateralOp<CPUDevice, T>);
 
 REGISTER_CPU(float);
-REGISTER_CPU(int32);
+//REGISTER_CPU(int32);
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
-#define REGISTER_GPU(T)                                          \
-  /* Declare explicit instantiations in kernel_example.cu.cc. */ \
-  extern template ExampleFunctor<GPUDevice, float>;              \
-  REGISTER_KERNEL_BUILDER(                                       \
-      Name("Example").Device(DEVICE_GPU).TypeConstraint<T>("T"), \
-      ExampleOp<GPUDevice, T>);
-REGISTER_GPU(float);
-REGISTER_GPU(int32);
+/* Declare explicit instantiations in kernel_example.cu.cc. */
+#define REGISTER_GPU(T) extern template ExampleFunctor<GPUDevice, float>; REGISTER_KERNEL_BUILDER(Name("Example").Device(DEVICE_GPU).TypeConstraint<T>("T"), ExampleOp<GPUDevice, T>); REGISTER_GPU(float);
+//REGISTER_GPU(int32);
 #endif  // GOOGLE_CUDA

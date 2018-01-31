@@ -166,14 +166,14 @@ void PermutohedralLatticeCPU::splat_point(const float *position, const float * v
 }
 
 
-void PermutohedralLatticeCPU::splat(float * positions, float * values){
+void PermutohedralLatticeCPU::splat(const float * positions, const float * values){
 
     //auto col = std::unique_ptr<float[]>(new float[vd]);
     auto col = new float[vd];
     col[vd - 1] = 1; // homogeneous coordinate
 
-    float *imPtr = values;
-    float *refPtr = positions;
+    float *imPtr = const_cast<float *>(values);
+    float *refPtr = const_cast<float *>(positions);
     for (int n = 0; n < N; n++) {
 
         for (int c = 0; c < vd - 1; c++) {
@@ -324,9 +324,9 @@ PermutohedralLatticeCPU::PermutohedralLatticeCPU(int pd_, int vd_, int N_): pd(p
 
 }
 
-void PermutohedralLatticeCPU::filter(float* input, float* positions) {
+void PermutohedralLatticeCPU::filter(float * output, const float* input, const float* positions) {
     splat(positions, input);
     blur();
-    slice(input);
+    slice(output);
 }
 

@@ -10,8 +10,9 @@
 template<typename Device, typename T>
 struct ExampleFunctor {
     void operator()(const Device &d,
-                    T *input,
-                    T *reference_image,
+                    T * output,
+                    const T *input,
+                    const T *reference_image,
                     int num_super_pixels,
                     int n_spatial_dims,
                     int *spatial_dims,
@@ -27,8 +28,9 @@ struct ExampleFunctor {
 template <typename T>
 struct ExampleFunctor<Eigen::GpuDevice, T> {
       void operator()(const Eigen::GpuDevice& d,
-                    T *input,
-                    T *reference_image,
+                    T * output,
+                    const T *input,
+                    const T *reference_image,
                     int num_super_pixels,
                     int n_spatial_dims,
                     int *spatial_dims,

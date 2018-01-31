@@ -2,7 +2,7 @@
 // Created by Miguel Monteiro on 29/01/2018.
 //
 #include "../PermutohedralLatticeCPU.h"
-
+#include "memory"
 //for the case where the image is its own reference image
 static void bilateral_filter_cpu(float *input,
                                  int n_input_channels,
@@ -21,7 +21,12 @@ static void bilateral_filter_cpu(float *input,
     compute_bilateral_kernel_cpu(input, positions, n, 3, 2, sdims, theta_alpha, theta_beta);
 
     printf("Calling filter...\n");
-    lattice_filter_cpu(input, positions, pd, vd, n);
+    auto output = new float[num_super_pixels*n_input_channels]{0};
 
+    lattice_filter_cpu(output, input, positions, pd, vd, n);
+
+    //std::swap(input, output);
+    std::memcpy(input, output, num_super_pixels*n_input_channels* sizeof(float));
+    delete[] output;
     delete[] positions;
 }

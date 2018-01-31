@@ -192,7 +192,7 @@ protected:
 
     void slice_point(float *col);
 
-    void splat(float *positions, float *values);
+    void splat(const float *positions, const float *values);
 
     void blur();
 
@@ -204,19 +204,19 @@ public:
     PermutohedralLatticeCPU(int pd_, int vd_, int N_);
 
 
-    void filter(float * input, float * positions);
+    void filter(float * output, const float * input, const float * positions);
 };
 
 
 
 static void compute_bilateral_kernel_cpu(const float * reference,
-                                           float * positions,
-                                           int num_super_pixels,
-                                           int reference_channels,
-                                           int n_sdims,
-                                           const int *sdims,
-                                           float theta_alpha,
-                                           float theta_beta){
+                                         float * positions,
+                                         int num_super_pixels,
+                                         int reference_channels,
+                                         int n_sdims,
+                                         const int *sdims,
+                                         float theta_alpha,
+                                         float theta_beta){
 
     int num_dims = n_sdims + reference_channels;
 
@@ -232,9 +232,9 @@ static void compute_bilateral_kernel_cpu(const float * reference,
     }
 };
 
-static void lattice_filter_cpu(float *input, float *positions, int pd, int vd, int n){
+static void lattice_filter_cpu(float * output, const float *input, const float *positions, int pd, int vd, int n){
     PermutohedralLatticeCPU lattice(pd, vd, n);
-    lattice.filter(input, positions);
+    lattice.filter(output, input, positions);
 }
 
 
