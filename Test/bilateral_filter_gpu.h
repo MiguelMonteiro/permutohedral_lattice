@@ -4,7 +4,7 @@
 
 
 #include <cuda_runtime.h>
-#include <unsupported/Eigen/CXX11/Tensor>
+//#include <unsupported/Eigen/CXX11/Tensor>
 //#include "tensorflow/core/framework/op_kernel.h"
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
 extern "C++" void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n);

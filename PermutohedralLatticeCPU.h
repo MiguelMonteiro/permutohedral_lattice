@@ -2,8 +2,8 @@
 // Created by Miguel Monteiro on 16/01/2018.
 //
 
-#ifndef PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
-#define PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
+#ifndef PERMUTOHEDRAL_LATTICE_CPU_H
+#define PERMUTOHEDRAL_LATTICE_CPU_H
 
 #include <cstring>
 #include <memory>
@@ -131,6 +131,12 @@ public:
         values = new T[vd * capacity / 2]{0};
     }
 
+    ~HashTableCPU(){
+        delete[](entries);
+        delete[](keys);
+        delete[](values);
+    }
+
     // Returns the number of vectors stored.
     int size() { return filled; }
 
@@ -157,6 +163,8 @@ public:
 };
 
 
+
+
 template<typename T> class PermutohedralLatticeCPU {
 protected:
 
@@ -170,13 +178,12 @@ protected:
     std::unique_ptr<T[]> barycentric;
     // std::unique_ptr<short[]> key;
 
-
     // slicing is done by replaying splatting (ie storing the sparse matrix)
     struct ReplayEntry {
         int offset;
         T weight;
-    } *replay;
-
+    };
+    std::unique_ptr<ReplayEntry[]> replay;
     int nReplay;
 
 
@@ -460,6 +467,11 @@ protected:
             // the freshest data is now in old_values, and new_values is ready to be written over
         }
 
+        if(old_values != hashTableBase){
+            std::swap(old_values, new_values);
+        }
+        delete[](new_values);
+        /*
         // depending where we ended up, we may have to copy data
         if (old_values != hashTableBase) {
             memcpy(hashTableBase, old_values, hashTable.size() * vd * sizeof(T));
@@ -467,7 +479,7 @@ protected:
         } else {
             delete[] new_values;
         }
-        printf("\n");
+        printf("\n");*/
 
         delete[] zero;
         delete[] n1_key;
@@ -479,7 +491,8 @@ public:
     PermutohedralLatticeCPU(int pd_, int vd_, int N_): pd(pd_), vd(vd_), N(N_), hashTable(pd_, vd_) {
 
         // Allocate storage for various arrays
-        replay = new ReplayEntry[N * (pd + 1)];
+        replay = std::unique_ptr<ReplayEntry[]>(new ReplayEntry[N * (pd + 1)]);
+        //replay = new ReplayEntry[N * (pd + 1)];
         nReplay = 0;
 
         //lattice properties
@@ -529,10 +542,10 @@ template <typename T> static void compute_bilateral_kernel_cpu(const T * referen
     }
 };
 
-template <typename T>static void lattice_filter_cpu(T * output, const T *input, const T *positions, int pd, int vd, int n){
+template <typename T> static void lattice_filter_cpu(T * output, const T *input, const T *positions, int pd, int vd, int n){
     PermutohedralLatticeCPU<T> lattice(pd, vd, n);
     lattice.filter(output, input, positions);
 }
 
 
-#endif //PERMUTOHEDRAL_LATTICE_BILATERAL_ORIGINAL_PERMUTOHEDRALLATTICE_H
+#endif //PERMUTOHEDRAL_LATTICE_CPU_H
