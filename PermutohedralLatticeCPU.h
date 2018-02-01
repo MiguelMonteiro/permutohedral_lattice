@@ -18,16 +18,9 @@
 /***************************************************************/
 template <typename T>class HashTableCPU {
 
-    // Private struct for the hash table entries.
-    struct Entry {
-        Entry() : keyIdx(-1), valueIdx(-1) {}
-        int keyIdx;
-        int valueIdx;
-    };
-
     short *keys;
     T *values;
-    Entry *entries;
+    int *entries;
     size_t capacity, filled;
     int pd, vd;
 
@@ -54,27 +47,25 @@ template <typename T>class HashTableCPU {
 
         // Find the entry with the given key
         while (true) {
-            Entry e = entries[h];
+            int* e = entries + h;
             // check if the cell is empty
-            if (e.keyIdx == -1) {
+            if (*e == -1) {
                 if (!create)
                     return -1; // Return not found.
                 // need to create an entry. Store the given key.
                 for (int i = 0; i < pd; i++)
                     keys[filled * pd + i] = key[i];
-                e.keyIdx = filled * pd;
-                e.valueIdx = filled * vd;
-                entries[h] = e;
+                *e = static_cast<int>(filled);
                 filled++;
-                return e.valueIdx;
+                return *e * vd;
             }
 
             // check if the cell has a matching key
             bool match = true;
             for (int i = 0; i < pd && match; i++)
-                match = keys[e.keyIdx + i] == key[i];
+                match = keys[*e*pd + i] == key[i];
             if (match)
-                return e.valueIdx;
+                return *e * vd;
 
             // increment the bucket with wraparound
             h++;
@@ -102,13 +93,15 @@ template <typename T>class HashTableCPU {
         delete[] keys;
         keys = newKeys;
 
-        auto *newEntries = new Entry[capacity];
+        auto *newEntries = new int[capacity];
+        memset(newEntries, -1, capacity*sizeof(int));
 
         // Migrate the table of indices.
         for (size_t i = 0; i < oldCapacity; i++) {
-            if (entries[i].keyIdx == -1) continue;
-            size_t h = hash(keys + entries[i].keyIdx) % capacity;
-            while (newEntries[h].keyIdx != -1) {
+            if (entries[i] == -1)
+                continue;
+            size_t h = hash(keys + entries[i] * pd) % capacity;
+            while (newEntries[h] != -1) {
                 h++;
                 if (h == capacity) h = 0;
             }
@@ -126,7 +119,8 @@ public:
     HashTableCPU(int pd_, int vd_) : pd(pd_), vd(vd_) {
         capacity = 1 << 15;
         filled = 0;
-        entries = new Entry[capacity];
+        entries = new int[capacity];
+        memset(entries, -1, capacity*sizeof(int));
         keys = new short[pd * capacity / 2];
         values = new T[vd * capacity / 2]{0};
     }
