@@ -366,17 +366,24 @@ __global__ static void blur(int n, float *newValues, MatrixEntry *matrix, int co
     np[color] -= pd + 1;
     nm[color] += pd + 1;
 
-
     int offNp = table.retrieve(np);
     int offNm = table.retrieve(nm);
 
+    //in case neighbours don't exist (lattice edges) offNp and offNm are -1
+    float zeros[vd]{0};
+    float *valNp = zeros;
+    float *valNm = zeros;
+    if(offNp >= 0)
+        valNp = table.values + vd * offNp;
+    if(offNm >= 0)
+        valNm = table.values + vd * offNm;
+
     float *valMe = table.values + vd * idx;
-    float *valNp = table.values + vd * offNp;
-    float *valNm = table.values + vd * offNm;
     float *valOut = newValues + vd * idx;
 
     for (int i = 0; i < vd; i++)
         valOut[i] = 0.25f * valNp[i] + 0.5f * valMe[i] + 0.25f * valNm[i];
+
 }
 
 template<int pd, int vd>
