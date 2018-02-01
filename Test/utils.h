@@ -5,10 +5,10 @@
 #define cimg_display 0
 #include "CImg.h"
 
-float * get_flat_float_from_image(cimg_library::CImg<unsigned char> image, float pixel_depth=255.0){
+template<typename T> T* get_flat_float_from_image(cimg_library::CImg<unsigned char> image, T pixel_depth=255.0){
 
     //dim0 = y dim1=x
-    auto flat = new float[image.width() * image.height() * 3]{0};
+    auto flat = new T[image.width() * image.height() * 3]{0};
     int idx{0};
     for(int y=0; y < image.height(); ++y){
         for(int x=0; x < image.width(); ++x){
@@ -21,6 +21,7 @@ float * get_flat_float_from_image(cimg_library::CImg<unsigned char> image, float
     return flat;
 }
 
+/*
 float * compute_kernel(cimg_library::CImg<unsigned char> image, float invSpatialStdev, float invColorStdev, float pixel_depth=255.0){
     auto positions = new float [image.width() * image.height() * 5]{0};
     int idx{0};
@@ -35,9 +36,9 @@ float * compute_kernel(cimg_library::CImg<unsigned char> image, float invSpatial
         }
     }
     return positions;
-}
+}*/
 
-void save_output(float*out, cimg_library::CImg<unsigned char> image, char*filename, float pixel_depth=255.0){
+template <typename T> void save_output(T*out, cimg_library::CImg<unsigned char> image, char*filename, T pixel_depth=255.0){
     int idx{0};
     for(int y=0; y < image.height(); ++y){
         for(int x=0; x < image.width(); ++x){

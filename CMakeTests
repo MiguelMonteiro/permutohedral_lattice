@@ -5,7 +5,6 @@ add_executable(bilateral_cpu_test
         Test/bilateral_filter_cpu.h
         Test/CImg.h
         Test/utils.h
-        PermutohedralLatticeCPU.cpp
         PermutohedralLatticeCPU.h)
 
 if (LINUX)
@@ -54,8 +53,7 @@ add_executable(compare_and_gpu_test
         Test/bilateral_filter_gpu.h
         Test/CImg.h
         Test/utils.h
-        PermutohedralLatticeCPU.h
-        PermutohedralLatticeCPU.cpp)
+        PermutohedralLatticeCPU.h)
 
 set_property(TARGET compare_and_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 target_link_libraries(compare_and_gpu_test PRIVATE permutohedral)
