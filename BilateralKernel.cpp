@@ -126,12 +126,15 @@ public:
 // Register the CPU kernels.
 #define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_CPU).TypeConstraint<T>("T"), BilateralOp<CPUDevice, T>);
 
-REGISTER_CPU(float);
+//REGISTER_CPU(float);
 //REGISTER_CPU(int32);
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
 /* Declare explicit instantiations in kernel_example.cu.cc. */
-#define REGISTER_GPU(T) extern template ExampleFunctor<GPUDevice, float>; REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_GPU).TypeConstraint<T>("T"), ExampleOp<GPUDevice, T>); REGISTER_GPU(float);
+extern template struct ExampleFunctor<GPUDevice, float>;
+#define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_GPU).TypeConstraint<T>("T"), BilateralOp<GPUDevice, T>);
+
+REGISTER_GPU(float);
 //REGISTER_GPU(int32);
 #endif  // GOOGLE_CUDA

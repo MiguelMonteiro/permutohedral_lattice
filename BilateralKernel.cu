@@ -1,5 +1,5 @@
 // kernel_example.cu.cc
-#define GOOGLE_CUDA 1
+//#define GOOGLE_CUDA 1
 
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
