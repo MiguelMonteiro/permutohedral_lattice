@@ -47,6 +47,8 @@ struct ExampleFunctor<CPUDevice, T> {
         int vd = n_input_channels + 1;
         int n = num_super_pixels;
 
+
+
         auto positions= new float[num_super_pixels * pd];
 
         compute_bilateral_kernel_cpu(reference_image,

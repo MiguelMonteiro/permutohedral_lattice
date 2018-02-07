@@ -39,7 +39,7 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
 
     //float* positions = d.allocate(n*pd* sizeof(float));
     T* positions;
-    cudaMalloc((void**)&(positions), n*pd*sizeof(float));
+    cudaMalloc((void**)&(positions), n*pd*sizeof(T));
 
     compute_bilateral_kernel_gpu(reference_image,
                                  positions,
@@ -56,6 +56,7 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
     //d.deallocate(positinos);
     cudaFree(positions);
     cudaFree(spatial_dims_gpu);
+    cudaDeviceSynchronize();
 }
 
 // Explicitly instantiate functors for the types of OpKernels registered.
