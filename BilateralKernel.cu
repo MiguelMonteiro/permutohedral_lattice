@@ -34,7 +34,7 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
 
     //
     int* spatial_dims_gpu;
-    cudaMalloc((void**)&(spatial_dims_gpu), n*pd*sizeof(int));
+    cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
     cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
 
     //float* positions = d.allocate(n*pd* sizeof(float));
