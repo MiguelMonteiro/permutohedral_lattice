@@ -561,7 +561,7 @@ __global__ static void compute_bilateral_kernel(const float * reference,
 
     int num_dims = n_sdims + reference_channels;
     int divisor = 1;
-    for(int sdim = 0; sdim < n_sdims; sdim++){
+    for(int sdim = n_sdims - 1; sdim >= 0; sdim--){
         positions[num_dims * idx + sdim] = ((idx / divisor) % sdims[sdim]) / theta_alpha;
         divisor *= sdims[sdim];
     }

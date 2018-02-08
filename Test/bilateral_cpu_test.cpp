@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 
     cimg_library::CImg<unsigned char> image(argv[1]);
     int N = image.width() * image.height();
-    int sdims[2]{image.width(), image.height()};
+    int sdims[2]{image.height(), image.width()};
     float pixel_depth=255.0;
 
     auto flat = get_flat_float_from_image<T>(image, pixel_depth);

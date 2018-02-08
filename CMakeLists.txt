@@ -24,7 +24,7 @@ string(REGEX REPLACE "\n$" "" TF_LIB "${TF_LIB}")
 include_directories(${TF_INC} ${TF_INC}/external/nsync/public)
 link_directories(${TF_LIB})
 
-set(TEST FALSE)
+set(TEST TRUE)
 
 if (TEST)
     include(CMakeTests)
@@ -50,6 +50,12 @@ add_library(bilateral SHARED BilateralKernel.cpp BilateralKernel.h Permutohedral
 target_compile_options(bilateral PUBLIC "-D GOOGLE_CUDA=1")
 target_link_libraries(bilateral PUBLIC tensorflow_framework cuda_bilateral)
 set_target_properties(bilateral PROPERTIES PREFIX "")
+
+#if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0)
+#    target_compile_options(bilateral PUBLIC "-D GLIBCXX_USE_CXX11_ABI=0")
+#endif()
+
+
 #target_include_directories(cuda_kernel.o INTERFACE ${EIGEN3_INCLUDE_DIR} PRIVATE ${TF_INC} ${TF_INC}/external/nsync/public)
 #link_directories(${TF_LIB})
 

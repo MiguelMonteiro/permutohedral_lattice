@@ -31,32 +31,32 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
     int pd = n_reference_channels + n_spatial_dims;
     int vd = n_input_channels + 1;
     int n = num_super_pixels;
-
     //
     int* spatial_dims_gpu;
     cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
     cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
 
-    //float* positions = d.allocate(n*pd* sizeof(float));
+
     T* positions;
     cudaMalloc((void**)&(positions), n*pd*sizeof(T));
+
+    printf("%d %d %d %f %f\n", n_reference_channels, num_super_pixels, n_spatial_dims, theta_alpha, theta_beta);
+    for(int i=0; i < n_spatial_dims; i++)
+        printf("%d", spatial_dims[i]);
 
     compute_bilateral_kernel_gpu(reference_image,
                                  positions,
                                  num_super_pixels,
                                  n_reference_channels,
                                  n_spatial_dims,
-                                 spatial_dims,
+                                 spatial_dims_gpu,
                                  theta_alpha,
                                  theta_beta);
 
 
-
     lattice_filter_gpu(output, input, positions, pd, vd, n);
-    //d.deallocate(positinos);
     cudaFree(positions);
     cudaFree(spatial_dims_gpu);
-    cudaDeviceSynchronize();
 }
 
 // Explicitly instantiate functors for the types of OpKernels registered.

@@ -526,7 +526,7 @@ template <typename T> static void compute_bilateral_kernel_cpu(const T * referen
 
     for(int p = 0; p < num_super_pixels; p++){
         int divisor = 1;
-        for(int sdim = 0; sdim < n_sdims; sdim++){
+        for(int sdim = n_sdims - 1; sdim >= 0; sdim--){
             positions[num_dims * p + sdim] = ((p / divisor) % sdims[sdim]) / theta_alpha;
             divisor *= sdims[sdim];
         }
