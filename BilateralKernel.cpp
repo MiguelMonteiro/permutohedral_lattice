@@ -16,6 +16,9 @@ using namespace tensorflow;
 
 REGISTER_OP("Bilateral")
         .Attr("T: {float32}")
+        .Attr("reverse: bool = false")
+        .Attr("theta_alpha: float = 1.0")
+        .Attr("theta_beta: float = 1.0")
         .Input("input_image: T")
         .Input("reference_image: T")
         .Output("output: T")
@@ -41,7 +44,8 @@ struct ExampleFunctor<CPUDevice, T> {
                     int n_input_channels,
                     int n_reference_channels,
                     float theta_alpha,
-                    float theta_beta) {
+                    float theta_beta,
+                    bool reverse) {
 
         int pd = n_reference_channels + n_spatial_dims;
         int vd = n_input_channels + 1;
@@ -71,7 +75,11 @@ struct ExampleFunctor<CPUDevice, T> {
 template <typename Device, typename T>
 class BilateralOp : public OpKernel {
 public:
-    explicit BilateralOp(OpKernelConstruction* context) : OpKernel(context) {}
+    explicit BilateralOp(OpKernelConstruction* context) : OpKernel(context) {
+        OP_REQUIRES_OK(context, context->GetAttr("reverse", &reverse));
+        OP_REQUIRES_OK(context, context->GetAttr("theta_alpha", &theta_alpha));
+        OP_REQUIRES_OK(context, context->GetAttr("theta_beta", &theta_beta));
+    }
 
     void Compute(OpKernelContext* context) override {
         // Grab the input tensor
@@ -94,8 +102,7 @@ public:
         assert(image_tensor.dims() ==  rank);
         auto ref_channels = static_cast<int>(image_tensor.dim_size(n_spatial_dims));
 
-        float theta_alpha{8};
-        float theta_beta{0.125};
+
         //int spatial_dims[2]{1000,800};
 
         //int* spatial_dims = input_tensor.shape().dim_sizes().data();
@@ -120,9 +127,14 @@ public:
                                     n_input_channels,
                                     n_reference_channels,
                                     theta_alpha,
-                                    theta_beta);
+                                    theta_beta,
+                                    reverse);
         delete[](spatial_dims);
     }
+private:
+    bool reverse;
+    float theta_alpha;
+    float theta_beta;
 };
 
 // Register the CPU kernels.

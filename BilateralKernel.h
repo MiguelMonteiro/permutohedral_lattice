@@ -10,7 +10,7 @@
 template<typename Device, typename T>
 struct ExampleFunctor {
     void operator()(const Device &d,
-                    T * output,
+                    T *output,
                     const T *input,
                     const T *reference_image,
                     int num_super_pixels,
@@ -19,16 +19,18 @@ struct ExampleFunctor {
                     int n_input_channels,
                     int n_reference_channels,
                     float theta_alpha,
-                    float theta_beta);
+                    float theta_beta,
+                    bool reverse);
 };
 
 
 #if GOOGLE_CUDA
+
 // Partially specialize functor for GpuDevice.
-template <typename T>
+template<typename T>
 struct ExampleFunctor<Eigen::GpuDevice, T> {
-      void operator()(const Eigen::GpuDevice& d,
-                    T * output,
+    void operator()(const Eigen::GpuDevice &d,
+                    T *output,
                     const T *input,
                     const T *reference_image,
                     int num_super_pixels,
@@ -37,8 +39,10 @@ struct ExampleFunctor<Eigen::GpuDevice, T> {
                     int n_input_channels,
                     int n_reference_channels,
                     float theta_alpha,
-                    float theta_beta);
+                    float theta_beta,
+                    bool reverse);
 };
+
 #endif
 
 

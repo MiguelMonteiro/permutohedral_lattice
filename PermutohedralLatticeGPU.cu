@@ -508,7 +508,7 @@ public:
     }
 #else
     // values and position must already be device pointers
-    void filter(float* output, const float* inputs, const float*  positions){
+    void filter(float* output, const float* inputs, const float*  positions, bool reverse){
 
         dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
         dim3 blockSize(BLOCK_SIZE, 1, 1);
@@ -525,7 +525,7 @@ public:
         splatCache<pd, vd><<<blocks, blockSize>>>(n, inputs, matrix, hashTable);
         printf("Splat: %s\n", cudaGetErrorString(cudaGetLastError()));
 
-        for (int remainder = 0; remainder <= pd; remainder++) {
+        for (int remainder=reverse?pd:0; remainder >= 0 && remainder <= pd; reverse?remainder--:remainder++) {
             blur<pd, vd><<<cleanBlocks, cleanBlockSize>>>(n * (pd + 1), newValues, matrix, remainder, hashTable);
             printf("Blur %d: %s\n", remainder, cudaGetErrorString(cudaGetLastError()));
             std::swap(hashTable.values, newValues);
@@ -540,9 +540,9 @@ public:
 
 
 template<int pd, int vd>
-void filter_(float* output, const float *input, const float *positions, int n) {
+void filter(float *output, const float *input, const float *positions, int n, bool reverse) {
     auto lattice = PermutohedralLatticeGPU<pd, vd>(n);
-    lattice.filter(output, input, positions);
+    lattice.filter(output, input, positions, reverse);
 
 }
 
@@ -582,10 +582,10 @@ __declspec(dllexport)
 
 
 //input and positions should be device pointers by this point
-void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n) {
+void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n, bool reverse=false) {
     //vd = image_channels + 1
     if(pd == 5 && vd == 4)
-        filter_<5, 4>(output, input, positions, n);
+        filter<5, 4>(output, input, positions, n, reverse);
     else
         return;
         //throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);

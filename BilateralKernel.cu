@@ -26,7 +26,8 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
                                               int n_input_channels,
                                               int n_reference_channels,
                                               float theta_alpha,
-                                              float theta_beta) {
+                                              float theta_beta,
+                                              bool reverse) {
 
     int pd = n_reference_channels + n_spatial_dims;
     int vd = n_input_channels + 1;
@@ -54,7 +55,7 @@ void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
                                  theta_beta);
 
 
-    lattice_filter_gpu(output, input, positions, pd, vd, n);
+    lattice_filter_gpu(output, input, positions, pd, vd, n, reverse);
     cudaFree(positions);
     cudaFree(spatial_dims_gpu);
 }

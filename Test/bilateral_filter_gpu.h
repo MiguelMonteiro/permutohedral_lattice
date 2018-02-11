@@ -7,7 +7,14 @@
 //#include <unsupported/Eigen/CXX11/Tensor>
 //#include "tensorflow/core/framework/op_kernel.h"
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
-extern "C++" void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n);
+extern "C++" void lattice_filter_gpu(float * output,
+                                     const float *input,
+                                     const float *positions,
+                                     int pd,
+                                     int vd,
+                                     int n, bool
+                                     reverse=false);
+
 extern "C++" void compute_bilateral_kernel_gpu(const float * reference,
                                                  float * positions,
                                                  int num_super_pixels,
