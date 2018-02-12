@@ -18,7 +18,7 @@ using namespace tensorflow;
 REGISTER_OP("Bilateral")
         .Attr("T: {float32}")
         .Attr("reverse: bool = false")
-        .Attr("bilateral: bool = false")
+        .Attr("bilateral: bool = true")
         .Attr("theta_alpha: float = 1.0")
         .Attr("theta_beta: float = 1.0")
         .Attr("theta_gamma: float = 1.0")

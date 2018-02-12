@@ -557,13 +557,13 @@ void filter(float *output, const float *input, const float *positions, int n, bo
 }
 
 __global__ static void compute_kernel(const float * reference,
-                                                float * positions,
-                                                int num_super_pixels,
-                                                int reference_channels,
-                                                int n_sdims,
-                                                const int *sdims,
-                                                float spatial_std,
-                                                float feature_std){
+                                      float * positions,
+                                      int num_super_pixels,
+                                      int reference_channels,
+                                      int n_sdims,
+                                      const int *sdims,
+                                      float spatial_std,
+                                      float feature_std){
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= num_super_pixels)
@@ -582,49 +582,6 @@ __global__ static void compute_kernel(const float * reference,
 
 }
 
-
-#ifdef LIBRARY
-extern "C++"
-#ifdef WIN32
-__declspec(dllexport)
-#endif
-#endif
-
-
-//input and positions should be device pointers by this point
-void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n, bool reverse=false) {
-    //vd = image_channels + 1
-    if(pd == 5 && vd == 4)
-        filter<5, 4>(output, input, positions, n, reverse);
-    else
-        return;
-    //throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);
-}
-
-void compute_bilateral_kernel_gpu(const float * reference,
-                                  float * positions,
-                                  int num_super_pixels,
-                                  int n_reference_channels,
-                                  int n_spatial_dims,
-                                  const int *spatial_dims,
-                                  float theta_alpha,
-                                  float theta_beta){
-
-    dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
-    dim3 blockSize(BLOCK_SIZE, 1, 1);
-    compute_kernel<<<blocks, blockSize>>>(reference, positions, num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, theta_alpha, theta_beta);
-};
-
-void compute_spatial_kernel_gpu(float * positions,
-                                int num_super_pixels,
-                                int n_spatial_dims,
-                                const int *spatial_dims,
-                                float theta_gamma){
-
-    dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
-    dim3 blockSize(BLOCK_SIZE, 1, 1);
-    compute_kernel<<<blocks, blockSize>>>(nullptr, positions, num_super_pixels, 0, n_spatial_dims, spatial_dims, theta_gamma, 0);
-};
 
 
 #endif //PERMUTOHEDRAL_CU

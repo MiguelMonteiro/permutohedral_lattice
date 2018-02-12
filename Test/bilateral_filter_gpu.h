@@ -7,13 +7,13 @@
 //#include <unsupported/Eigen/CXX11/Tensor>
 //#include "tensorflow/core/framework/op_kernel.h"
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
+
 extern "C++" void lattice_filter_gpu(float * output,
                                      const float *input,
                                      const float *positions,
                                      int pd,
                                      int vd,
-                                     int n, bool
-                                     reverse=false);
+                                     int n);
 
 extern "C++" void compute_bilateral_kernel_gpu(const float * reference,
                                                  float * positions,
@@ -32,12 +32,6 @@ void bilateral_filter_gpu(float *input,
                           int num_super_pixels,
                           float theta_alpha,
                           float theta_beta) {
-    /*
-    {
-        Eigen::GpuDevice d;
-        float * ptr = d.allocate(9);
-
-    }*/
 
     int pd = n_input_channels + n_sdims;
     int vd = n_input_channels + 1;

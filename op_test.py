@@ -10,16 +10,19 @@ module = bilateral_grad.module
 theta_alpha = 8.0
 theta_beta = 0.125
 
-#shape=[1200,800,3]
-#im = Image.open("../input.bmp")
+shape=[1200,800,3]
+im = Image.open("../input.bmp")
 
-#tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
-#tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
+tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
+tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
 
-#output = module.bilateral(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta)
-#with tf.Session() as sess:
-#    o = sess.run(output) * 255
-#o = np.round(o).astype(np.uint8)
+output = module.bilateral(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta)
+with tf.Session() as sess:
+    o = sess.run(output) * 255
+o = np.round(o).astype(np.uint8)
+
+im = Image.fromarray(o)
+im.save("this_is_it.bmp")
 
 
 #

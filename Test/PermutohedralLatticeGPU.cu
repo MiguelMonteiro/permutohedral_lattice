@@ -1,16 +1,12 @@
-
-
-
 //#include "cuda_code_indexing.h"
 #include "cuda_runtime.h"
-#include "PermutohedralLatticeGPU.cuh"
-
+#include "../PermutohedralLatticeGPU.cuh"
 
 //input and positions should be device pointers by this point
-void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n, bool reverse=false) {
+void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n) {
     //vd = image_channels + 1
     if(pd == 5 && vd == 4)
-        filter<5, 4>(output, input, positions, n, reverse);
+        filter<5, 4>(output, input, positions, n, false);
     else
         return;
     //throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);
@@ -40,8 +36,5 @@ void compute_spatial_kernel_gpu(float * positions,
     dim3 blockSize(BLOCK_SIZE, 1, 1);
     compute_kernel<<<blocks, blockSize>>>(nullptr, positions, num_super_pixels, 0, n_spatial_dims, spatial_dims, theta_gamma, 0);
 };
-
-
-#endif //PERMUTOHEDRAL_CU
 
 
