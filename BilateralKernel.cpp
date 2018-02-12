@@ -11,14 +11,17 @@ using namespace tensorflow;
 
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
+#include "cuda_runtime.h"
 
 using namespace tensorflow;
 
 REGISTER_OP("Bilateral")
         .Attr("T: {float32}")
         .Attr("reverse: bool = false")
+        .Attr("bilateral: bool = false")
         .Attr("theta_alpha: float = 1.0")
         .Attr("theta_beta: float = 1.0")
+        .Attr("theta_gamma: float = 1.0")
         .Input("input_image: T")
         .Input("reference_image: T")
         .Output("output: T")
@@ -31,9 +34,10 @@ REGISTER_OP("Bilateral")
 using CPUDevice = Eigen::ThreadPoolDevice;
 using GPUDevice = Eigen::GpuDevice;
 
+/*
 // CPU specialization of actual computation.
 template <typename T>
-struct ExampleFunctor<CPUDevice, T> {
+struct LatticeFilter<CPUDevice, T> {
     void operator()(const CPUDevice& d,
                     T * output,
                     const T *input,
@@ -69,6 +73,7 @@ struct ExampleFunctor<CPUDevice, T> {
         delete[] positions;
     }
 };
+*/
 
 // OpKernel definition.
 // template parameter <T> is the datatype of the tensors.
@@ -77,8 +82,10 @@ class BilateralOp : public OpKernel {
 public:
     explicit BilateralOp(OpKernelConstruction* context) : OpKernel(context) {
         OP_REQUIRES_OK(context, context->GetAttr("reverse", &reverse));
+        OP_REQUIRES_OK(context, context->GetAttr("bilateral", &bilateral));
         OP_REQUIRES_OK(context, context->GetAttr("theta_alpha", &theta_alpha));
         OP_REQUIRES_OK(context, context->GetAttr("theta_beta", &theta_beta));
+        OP_REQUIRES_OK(context, context->GetAttr("theta_gamma", &theta_gamma));
     }
 
     void Compute(OpKernelContext* context) override {
@@ -112,29 +119,56 @@ public:
         // Create an output tensor
         Tensor* output_tensor = nullptr;
         OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
-        //OP_REQUIRES_OK(context, context->set_output(0, &input_tensor));
+
         // Do the computation.
         OP_REQUIRES(context, input_tensor.NumElements() <= tensorflow::kint32max, errors::InvalidArgument("Too many elements in tensor"));
 
 
-        ExampleFunctor<Device, T>()(context->eigen_device<Device>(),
-                                    output_tensor->flat<T>().data(),
-                                    input_tensor.flat<T>().data(),
-                                    image_tensor.flat<T>().data(),
-                                    num_super_pixels,
-                                    n_spatial_dims,
-                                    spatial_dims,
-                                    n_input_channels,
-                                    n_reference_channels,
-                                    theta_alpha,
-                                    theta_beta,
-                                    reverse);
+        Tensor positions;
+        OP_REQUIRES_OK(context, context->allocate_temp(DataTypeToEnum<T>::v(), input_tensor.shape(), &positions));
+
+        //auto a = input_tensor.shape().dim_sizes().data();
+        //auto b = reinterpret_cast<int>(a);
+
+
+        int pd = n_reference_channels + n_spatial_dims;
+        int vd = n_input_channels + 1;
+
+        int* spatial_dims_gpu;
+        cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
+        cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
+
+        ComputeKernel<Device, T>()(context->eigen_device<Device>(),
+                                            image_tensor.flat<T>().data(),
+                                            positions.flat<T>().data(),
+                                            num_super_pixels,
+                                            n_spatial_dims,
+                                            spatial_dims_gpu,
+                                            n_reference_channels,
+                                            theta_alpha,
+                                            theta_beta,
+                                            theta_gamma,
+                                            bilateral);
+
+
+
+        LatticeFilter<Device, T>()(context->eigen_device<Device>(),
+                                          output_tensor->flat<T>().data(),
+                                          input_tensor.flat<T>().data(),
+                                          positions.flat<T>().data(),
+                                          num_super_pixels,
+                                          pd,
+                                          vd,
+                                          reverse);
+        cudaFree(spatial_dims_gpu);
         delete[](spatial_dims);
     }
 private:
     bool reverse;
+    bool bilateral;
     float theta_alpha;
     float theta_beta;
+    float theta_gamma;
 };
 
 // Register the CPU kernels.
@@ -146,7 +180,7 @@ private:
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
 /* Declare explicit instantiations in kernel_example.cu.cc. */
-extern template struct ExampleFunctor<GPUDevice, float>;
+extern template struct LatticeFilter<GPUDevice, float>;
 #define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_GPU).TypeConstraint<T>("T"), BilateralOp<GPUDevice, T>);
 
 REGISTER_GPU(float);

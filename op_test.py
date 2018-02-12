@@ -7,18 +7,19 @@ import bilateral_grad
 
 module = bilateral_grad.module
 
-theta_alpha = 1.0
-theta_beta = 1.0
-shape=[1200,800,3]
-im = Image.open("../input.bmp")
+theta_alpha = 8.0
+theta_beta = 0.125
 
-tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
-tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
+#shape=[1200,800,3]
+#im = Image.open("../input.bmp")
 
-output = module.bilateral(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta)
-with tf.Session() as sess:
-    o = sess.run(output) * 255
-o = np.round(o).astype(np.uint8)
+#tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
+#tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
+
+#output = module.bilateral(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta)
+#with tf.Session() as sess:
+#    o = sess.run(output) * 255
+#o = np.round(o).astype(np.uint8)
 
 
 #
@@ -31,19 +32,7 @@ tf_reference_image = tf.constant(image, dtype=tf.float32)
 
 
 grad = module.bilateral(tf_input_image, tf_reference_image, reverse=True, theta_alpha=theta_alpha, theta_beta=theta_beta)
-point =  module.bilateral(tf_input_image, tf_reference_image, reverse=False, theta_alpha=theta_alpha, theta_beta=theta_beta)
-epsilon= 1e-3
-left = module.bilateral(tf_input_image - epsilon, tf_reference_image, reverse=False, theta_alpha=theta_alpha, theta_beta=theta_beta)
-right = module.bilateral(tf_input_image + epsilon, tf_reference_image, reverse=False, theta_alpha=theta_alpha, theta_beta=theta_beta)
 
-
-with tf.Session() as sess:
-    g = sess.run(grad)
-    p = sess.run(point)
-    r = sess.run(right)
-    l = sess.run(left)
-
-(r - l) / (2 * epsilon)
 with tf.Session() as sess:
     out = gradient_checker.compute_gradient([tf_input_image, tf_reference_image], [shape, shape], grad, shape)
 

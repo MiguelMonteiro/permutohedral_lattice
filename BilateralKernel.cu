@@ -7,61 +7,68 @@
 
 #include "tensorflow/core/framework/op_kernel.h"
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
-#include "PermutohedralLatticeGPU.cu"
+#include "PermutohedralLatticeGPU.cuh"
 
 using namespace tensorflow;
 
 using GPUDevice = Eigen::GpuDevice;
 
 
+template<typename T>
+void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
+                                                      const T *reference_image,
+                                                      T * positions,
+                                                      int num_super_pixels,
+                                                      int n_spatial_dims,
+                                                      int *spatial_dims,
+                                                      int n_reference_channels,
+                                                      float theta_alpha,
+                                                      float theta_beta,
+                                                      float theta_gamma,
+                                                      bool bilateral){
+
+    dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
+    dim3 blockSize(BLOCK_SIZE, 1, 1);
+
+    if(bilateral){
+        compute_kernel<<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
+                num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, theta_alpha, theta_beta);
+
+    } else {
+        compute_kernel<<<blocks, blockSize, 0, d.stream()>>>(nullptr,
+                positions, num_super_pixels, 0, n_spatial_dims, spatial_dims, theta_gamma, 0);
+    }
+
+
+};
+
+
+
 // Define the GPU implementation that launches the CUDA kernel.
 template <typename T>
-void ExampleFunctor<GPUDevice, T>::operator()(const GPUDevice& d,
-                                              T* output,
-                                              const T *input,
-                                              const T *reference_image,
-                                              int num_super_pixels,
-                                              int n_spatial_dims,
-                                              int *spatial_dims,
-                                              int n_input_channels,
-                                              int n_reference_channels,
-                                              float theta_alpha,
-                                              float theta_beta,
-                                              bool reverse) {
-
-    int pd = n_reference_channels + n_spatial_dims;
-    int vd = n_input_channels + 1;
-    int n = num_super_pixels;
-    //
-    int* spatial_dims_gpu;
-    cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
-    cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
+void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
+                                                    T* output,
+                                                    const T *input,
+                                                    const T *positions,
+                                                    int num_super_pixels,
+                                                    int pd,
+                                                    int vd,
+                                                    bool reverse) {
 
 
-    T* positions;
-    cudaMalloc((void**)&(positions), n*pd*sizeof(T));
+    if(pd == 5 && vd == 4){
+        auto lattice = PermutohedralLatticeGPU<5, 4>(num_super_pixels, d.stream());
+        lattice.filter(output, input, positions, reverse);
+    }
+    else
+        return;
 
-    printf("%d %d %d %f %f\n", n_reference_channels, num_super_pixels, n_spatial_dims, theta_alpha, theta_beta);
-    for(int i=0; i < n_spatial_dims; i++)
-        printf("%d", spatial_dims[i]);
-
-    compute_bilateral_kernel_gpu(reference_image,
-                                 positions,
-                                 num_super_pixels,
-                                 n_reference_channels,
-                                 n_spatial_dims,
-                                 spatial_dims_gpu,
-                                 theta_alpha,
-                                 theta_beta);
-
-
-    lattice_filter_gpu(output, input, positions, pd, vd, n, reverse);
-    cudaFree(positions);
-    cudaFree(spatial_dims_gpu);
 }
 
+
 // Explicitly instantiate functors for the types of OpKernels registered.
-template struct ExampleFunctor<GPUDevice, float>;
-//template struct ExampleFunctor<GPUDevice, int32>;
+template struct ComputeKernel<GPUDevice, float>;
+template struct LatticeFilter<GPUDevice, float>;
+//template struct LatticeFilter<GPUDevice, int32>;
 
 #endif  // GOOGLE_CUDA
