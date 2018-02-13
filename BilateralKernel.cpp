@@ -91,7 +91,16 @@ public:
     void Compute(OpKernelContext* context) override {
         // Grab the input tensor
         const Tensor& input_tensor = context->input(0);
-        const Tensor& image_tensor = context->input(1);
+        const Tensor& reference_image_tensor = context->input(1);
+
+
+        // Create an output tensor
+        Tensor* output_tensor = nullptr;
+        OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
+
+        // Do the computation.
+        OP_REQUIRES(context, input_tensor.NumElements() <= tensorflow::kint32max,
+                    errors::InvalidArgument("Too many elements in tensor"));
 
         // calculate dimensions; assumes channel is last dimension
         int rank = input_tensor.dims();
@@ -106,60 +115,60 @@ public:
             spatial_dims[i] = static_cast<int>(input_tensor.dim_size(i));
         }
 
-        assert(image_tensor.dims() ==  rank);
-        auto ref_channels = static_cast<int>(image_tensor.dim_size(n_spatial_dims));
-
-
-        //int spatial_dims[2]{1000,800};
-
-        //int* spatial_dims = input_tensor.shape().dim_sizes().data();
-        int n_input_channels = input_tensor.dim_size(rank-1);
-        int n_reference_channels = image_tensor.dim_size(rank-1);
-
-        // Create an output tensor
-        Tensor* output_tensor = nullptr;
-        OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
-
-        // Do the computation.
-        OP_REQUIRES(context, input_tensor.NumElements() <= tensorflow::kint32max, errors::InvalidArgument("Too many elements in tensor"));
-
-
-        Tensor positions;
-        OP_REQUIRES_OK(context, context->allocate_temp(DataTypeToEnum<T>::v(), input_tensor.shape(), &positions));
-
-        //auto a = input_tensor.shape().dim_sizes().data();
-        //auto b = reinterpret_cast<int>(a);
-
-
-        int pd = n_reference_channels + n_spatial_dims;
-        int vd = n_input_channels + 1;
 
         int* spatial_dims_gpu;
         cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
         cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
 
+        //long long * a = input_tensor.shape().dim_sizes().data();
+
+        auto n_input_channels = static_cast<int>(input_tensor.dim_size(rank - 1));
+        vd = n_input_channels + 1;
+
+        float spatial_std;
+        float features_std;
+        int n_reference_channels;
+
+        if(bilateral){
+            assert(reference_image_tensor.dims() ==  rank);
+            n_reference_channels = static_cast<int>(reference_image_tensor.dim_size(rank - 1));
+            pd = n_reference_channels + n_spatial_dims;
+            spatial_std = theta_alpha;
+            features_std = theta_beta;
+        }else{
+            pd = n_spatial_dims;
+            n_reference_channels = 0; //set to zero so ComputeKernel does not use reference image channels
+            spatial_std = theta_gamma;
+            features_std = -1; //does not matter
+        }
+
+
+        // Allocate kernel positions and calculate them
+        Tensor positions;
+        OP_REQUIRES_OK(context, context->allocate_temp(DataTypeToEnum<T>::v(),
+                                                       TensorShape({num_super_pixels * pd}), &positions));
+
+
         ComputeKernel<Device, T>()(context->eigen_device<Device>(),
-                                            image_tensor.flat<T>().data(),
-                                            positions.flat<T>().data(),
-                                            num_super_pixels,
-                                            n_spatial_dims,
-                                            spatial_dims_gpu,
-                                            n_reference_channels,
-                                            theta_alpha,
-                                            theta_beta,
-                                            theta_gamma,
-                                            bilateral);
+                                   reference_image_tensor.flat<T>().data(),
+                                   positions.flat<T>().data(),
+                                   num_super_pixels,
+                                   n_spatial_dims,
+                                   spatial_dims_gpu,
+                                   n_reference_channels,
+                                   spatial_std,
+                                   features_std);
 
 
 
         LatticeFilter<Device, T>()(context->eigen_device<Device>(),
-                                          output_tensor->flat<T>().data(),
-                                          input_tensor.flat<T>().data(),
-                                          positions.flat<T>().data(),
-                                          num_super_pixels,
-                                          pd,
-                                          vd,
-                                          reverse);
+                                   output_tensor->flat<T>().data(),
+                                   input_tensor.flat<T>().data(),
+                                   positions.flat<T>().data(),
+                                   num_super_pixels,
+                                   pd,
+                                   vd,
+                                   reverse);
         cudaFree(spatial_dims_gpu);
         delete[](spatial_dims);
     }
@@ -169,6 +178,10 @@ private:
     float theta_alpha;
     float theta_beta;
     float theta_gamma;
+
+    int pd;
+    int vd;
+
 };
 
 // Register the CPU kernels.

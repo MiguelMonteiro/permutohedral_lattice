@@ -13,56 +13,63 @@ using namespace tensorflow;
 
 using GPUDevice = Eigen::GpuDevice;
 
+class OpNotImplemented: public std::exception
+{
+    virtual const char* what() const throw()
+    {
+        return "The op was not compiled for the number of input and reference channels used, "
+                "recompile op with correct values of pd and vd";
+    }
+} OpNotImplemented;
 
 template<typename T>
 void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
-                                                      const T *reference_image,
-                                                      T * positions,
-                                                      int num_super_pixels,
-                                                      int n_spatial_dims,
-                                                      int *spatial_dims,
-                                                      int n_reference_channels,
-                                                      float theta_alpha,
-                                                      float theta_beta,
-                                                      float theta_gamma,
-                                                      bool bilateral){
+                                             const T *reference_image,
+                                             T * positions,
+                                             int num_super_pixels,
+                                             int n_spatial_dims,
+                                             int *spatial_dims,
+                                             int n_reference_channels,
+                                             float spatial_std,
+                                             float features_std){
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
 
-    if(bilateral){
-        compute_kernel<<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
-                num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, theta_alpha, theta_beta);
-
-    } else {
-        compute_kernel<<<blocks, blockSize, 0, d.stream()>>>(nullptr,
-                positions, num_super_pixels, 0, n_spatial_dims, spatial_dims, theta_gamma, 0);
-    }
+    compute_kernel<<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
+            num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, spatial_std, features_std);
 
 
 };
 
+//declaration of what lattices (pd and vd) can be used
 
 
 // Define the GPU implementation that launches the CUDA kernel.
 template <typename T>
 void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
-                                                    T* output,
-                                                    const T *input,
-                                                    const T *positions,
-                                                    int num_super_pixels,
-                                                    int pd,
-                                                    int vd,
-                                                    bool reverse) {
+                                             T* output,
+                                             const T *input,
+                                             const T *positions,
+                                             int num_super_pixels,
+                                             int pd,
+                                             int vd,
+                                             bool reverse) {
 
 
     if(pd == 5 && vd == 4){
         auto lattice = PermutohedralLatticeGPU<5, 4>(num_super_pixels, d.stream());
         lattice.filter(output, input, positions, reverse);
-    }
-    else
         return;
-
+    }
+    if(pd == 2 && vd == 4){
+        auto lattice = PermutohedralLatticeGPU<2, 4>(num_super_pixels, d.stream());
+        lattice.filter(output, input, positions, reverse);
+        return;
+    }
+    else{
+        throw OpNotImplemented;
+    }
 }
 
 

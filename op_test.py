@@ -17,13 +17,17 @@ tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
 tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
 
 output = module.bilateral(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta)
+output_2 = module.bilateral(tf_input_image, tf_reference_image, theta_gamma=8.0, bilateral=False)
 with tf.Session() as sess:
     o = sess.run(output) * 255
+    o2 = sess.run(output_2) * 255
 o = np.round(o).astype(np.uint8)
+o2 = np.round(o2).astype(np.uint8)
 
 im = Image.fromarray(o)
 im.save("this_is_it.bmp")
-
+im = Image.fromarray(o2)
+im.save("this_is_it_2.bmp")
 
 #
 

@@ -29,10 +29,8 @@ struct ComputeKernel {
                     int n_spatial_dims,
                     int *spatial_dims,
                     int n_reference_channels,
-                    float theta_alpha,
-                    float theta_beta,
-                    float theta_gamma,
-                    bool bilateral);
+                    float spatial_std,
+                    float features_std);
 };
 
 
@@ -61,10 +59,8 @@ struct ComputeKernel<Eigen::GpuDevice, T> {
                     int n_spatial_dims,
                     int * spatial_dims,
                     int n_reference_channels,
-                    float theta_alpha,
-                    float theta_beta,
-                    float theta_gamma,
-                    bool bilateral);
+                    float spatial_std,
+                    float features_std);
 };
 
 
