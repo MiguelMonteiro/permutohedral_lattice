@@ -17,7 +17,12 @@ def _bilateral_grad(op, grad):
     Gradients with respect to the input of `high_dim_filter`.
     """
 
-    feats = op.inputs[1]
-    grad_vals = module.bilateral(grad, feats, reverse=True)
+    reference_image = op.inputs[1]
+    grad_vals = module.bilateral(grad, reference_image,
+                                 bilateral=op.get_attr('bilateral'),
+                                 theta_alpha=op.get_attr('theta_alpha'),
+                                 theta_beta=op.get_attr('theta_beta'),
+                                 theta_gamma=op.get_attr('theta_gamma'),
+                                 reverse=True)
 
-    return [grad_vals, tf.zeros_like(feats)]
+    return [grad_vals, tf.zeros_like(reference_image)]

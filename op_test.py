@@ -32,32 +32,27 @@ im.save("this_is_it_2.bmp")
 #
 
 shape = [20, 20, 3]
+np.random.seed(1)
 
-image = np.random.rand(20,20,3)
+image = np.random.rand(20,20,3) * 255
+
 tf_input_image = tf.constant(image, dtype=tf.float32)
 tf_reference_image = tf.constant(image, dtype=tf.float32)
 
+y = module.bilateral(tf_input_image, tf_reference_image,
+                     theta_alpha=8, theta_beta=.125, theta_gamma = 0.5, bilateral=True)
 
-grad = module.bilateral(tf_input_image, tf_reference_image, reverse=True, theta_alpha=theta_alpha, theta_beta=theta_beta)
 
 with tf.Session() as sess:
-    out = gradient_checker.compute_gradient([tf_input_image, tf_reference_image], [shape, shape], grad, shape)
+    max_error = tf.test.compute_gradient_error(x=tf_input_image, x_shape=shape, y=y, y_shape=shape, delta=1e-3)
 
-# We only need to compare gradients w.r.t. unaries
-computed = out[0][0].flatten()
-estimated = out[0][1].flatten()
+print(max_error)
 
+with tf.Session() as sess:
+    j = tf.test.compute_gradient(x=tf_input_image, x_shape=shape, y=y, y_shape=shape, delta=1e-3)
 
-mask = (computed != 0)
-computed = computed[mask]
-estimated = estimated[mask]
-difference = computed - estimated
-
-measure1 = np.mean(difference) / np.mean(computed)
-measure2 = np.max(difference) / np.max(computed)
-
-assert(measure1 <= 1e-3)
-assert(measure2 <= 2e-2)
+diff = np.abs(j[0]-j[1])
+print(np.mean(diff[diff!=0]))
 
 
 
