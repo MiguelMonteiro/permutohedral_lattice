@@ -4,9 +4,6 @@
 
 
 #include <cuda_runtime.h>
-//#include <unsupported/Eigen/CXX11/Tensor>
-//#include "tensorflow/core/framework/op_kernel.h"
-//#include "tensorflow/core/util/cuda_kernel_helper.h"
 
 extern "C++" void lattice_filter_gpu(float * output,
                                      const float *input,
@@ -16,13 +13,13 @@ extern "C++" void lattice_filter_gpu(float * output,
                                      int n);
 
 extern "C++" void compute_bilateral_kernel_gpu(const float * reference,
-                                                 float * positions,
-                                                 int num_super_pixels,
-                                                 int n_reference_channels,
-                                                 int n_spatial_dims,
-                                                 const int *spatial_dims,
-                                                 float theta_alpha,
-                                                 float theta_beta);
+                                               float * positions,
+                                               int num_super_pixels,
+                                               int n_reference_channels,
+                                               int n_spatial_dims,
+                                               const int *spatial_dims,
+                                               float theta_alpha,
+                                               float theta_beta);
 
 //for the case where the image is its own reference image
 void bilateral_filter_gpu(float *input,

@@ -29,8 +29,8 @@ struct ComputeKernel {
                     int n_spatial_dims,
                     int *spatial_dims,
                     int n_reference_channels,
-                    float spatial_std,
-                    float features_std);
+                    T spatial_std,
+                    T features_std);
 };
 
 
@@ -59,8 +59,8 @@ struct ComputeKernel<Eigen::GpuDevice, T> {
                     int n_spatial_dims,
                     int * spatial_dims,
                     int n_reference_channels,
-                    float spatial_std,
-                    float features_std);
+                    T spatial_std,
+                    T features_std);
 };
 
 

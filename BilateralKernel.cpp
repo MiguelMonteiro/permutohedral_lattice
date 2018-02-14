@@ -16,7 +16,7 @@ using namespace tensorflow;
 using namespace tensorflow;
 
 REGISTER_OP("Bilateral")
-        .Attr("T: {float32}")
+        .Attr("T: {float32, float64}")
         .Attr("reverse: bool = false")
         .Attr("bilateral: bool = true")
         .Attr("theta_alpha: float = 1.0")
@@ -125,8 +125,8 @@ public:
         auto n_input_channels = static_cast<int>(input_tensor.dim_size(rank - 1));
         vd = n_input_channels + 1;
 
-        float spatial_std;
-        float features_std;
+        T spatial_std;
+        T features_std;
         int n_reference_channels;
 
         if(bilateral){
@@ -194,8 +194,10 @@ private:
 #ifdef GOOGLE_CUDA
 /* Declare explicit instantiations in kernel_example.cu.cc. */
 extern template struct LatticeFilter<GPUDevice, float>;
+extern template struct LatticeFilter<GPUDevice, double>;
+
 #define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_GPU).TypeConstraint<T>("T"), BilateralOp<GPUDevice, T>);
 
 REGISTER_GPU(float);
-//REGISTER_GPU(int32);
+REGISTER_GPU(double);
 #endif  // GOOGLE_CUDA

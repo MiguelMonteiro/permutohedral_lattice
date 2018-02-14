@@ -6,10 +6,9 @@
 void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n) {
     //vd = image_channels + 1
     if(pd == 5 && vd == 4)
-        filter<5, 4>(output, input, positions, n, false);
+        filter<float, 5, 4>(output, input, positions, n, false);
     else
         return;
-    //throw std::invalid_argument( "filter not implemented" ); //LOG(FATAL);
 }
 
 void compute_bilateral_kernel_gpu(const float * reference,
@@ -23,7 +22,7 @@ void compute_bilateral_kernel_gpu(const float * reference,
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
-    compute_kernel<<<blocks, blockSize>>>(reference, positions, num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, theta_alpha, theta_beta);
+    compute_kernel<float><<<blocks, blockSize>>>(reference, positions, num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, theta_alpha, theta_beta);
 };
 
 void compute_spatial_kernel_gpu(float * positions,
@@ -34,7 +33,7 @@ void compute_spatial_kernel_gpu(float * positions,
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
-    compute_kernel<<<blocks, blockSize>>>(nullptr, positions, num_super_pixels, 0, n_spatial_dims, spatial_dims, theta_gamma, 0);
+    compute_kernel<float><<<blocks, blockSize>>>(nullptr, positions, num_super_pixels, 0, n_spatial_dims, spatial_dims, theta_gamma, 0);
 };
 
 
