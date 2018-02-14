@@ -386,44 +386,25 @@ __global__ static void blur(int n, T *newValues, MatrixEntry<T> *matrix, int col
     np[color] -= pd + 1;
     nm[color] += pd + 1;
 
-/*    int offNp = table.retrieve(np);
+    int offNp = table.retrieve(np);
     int offNm = table.retrieve(nm);
+
+    T *valMe = table.values + vd * idx;
+    T *valOut = newValues + vd * idx;
 
     //in case neighbours don't exist (lattice edges) offNp and offNm are -1
     T zeros[vd]{0};
-    T *valNp = zeros;
+    T *valNp = zeros; //or valMe? for edges?
     T *valNm = zeros;
     if(offNp >= 0)
         valNp = table.values + vd * offNp;
     if(offNm >= 0)
         valNm = table.values + vd * offNm;
 
-    T *valMe = table.values + vd * idx;
-    T *valOut = newValues + vd * idx;
-
-    for (int i = 0; i < vd; i++)
-        valOut[i] = 0.25 * valNp[i] + 0.5 * valMe[i] + 0.25 * valNm[i];
-    //valOut[i] = 0.5f * valNp[i] + 1.0f * valMe[i] + 0.5f * valNm[i];*/
-    int offNp = table.retrieve(np);
-    int offNm = table.retrieve(nm);
-
-
-    //in case neighbours don't exist (lattice edges) offNp and offNm are -1
-    T *valMe = table.values + vd * idx;
-    T *valOut = newValues + vd * idx;
-
-    //T zeros[vd]{0};
-    T *valNp = valMe;
-    T *valNm = valMe;
-    if(offNp >= 0)
-        valNp = table.values + vd * offNp;
-    if(offNm >= 0)
-        valNm = table.values + vd * offNm;
 
     for (int i = 0; i < vd; i++)
         valOut[i] = 0.25 * valNp[i] + 0.5 * valMe[i] + 0.25 * valNm[i];
     //valOut[i] = 0.5f * valNp[i] + 1.0f * valMe[i] + 0.5f * valNm[i];
-
 }
 
 template<typename T, int pd, int vd>
