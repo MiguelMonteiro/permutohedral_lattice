@@ -11,7 +11,7 @@ theta_alpha = 8.0
 theta_beta = 0.125
 
 shape=[1200,800,3]
-im = Image.open("../input.bmp")
+im = Image.open("../small_input.bmp")
 
 tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float64)
 tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float64)
@@ -36,11 +36,20 @@ np.random.seed(1)
 
 image = np.uint8(255 * np.random.rand(20, 20, 3)) / 255.0
 
-tf_input_image = tf.constant(image, dtype=tf.float32)
-tf_reference_image = tf.constant(image, dtype=tf.float32)
+tf_input_image = tf.constant(image, dtype=tf.float64)
+tf_reference_image = tf.constant(image, dtype=tf.float64)
+
+
+y = module.bilateral(tf_input_image, tf_reference_image,
+                     theta_alpha=.5, theta_beta=.5, theta_gamma=0.5, bilateral=False)
+with tf.Session() as sess:
+    max_error = tf.test.compute_gradient_error(x=tf_input_image, x_shape=shape, y=y, y_shape=shape, delta=1e-3)
+
+
 
 #values = [0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 1.0, 2.0, 5.0, 10.0, 100.0]
 values = np.logspace(-2, 0.5, base=10)
+
 m = []
 for theta_gamma in values:
     y = module.bilateral(tf_input_image, tf_reference_image,

@@ -31,15 +31,31 @@ int main(int argc, char **argv) {
     float theta_alpha = atof(argv[3]);
     float theta_beta = atof(argv[4]);
 
-	std:clock_t begin = std::clock();
-    bilateral_filter_gpu(flat, 3, 2, sdims, N, theta_alpha, theta_beta);
+	std::clock_t begin = std::clock();
+    bilateral_filter_gpu<float>(flat, 3, 2, sdims, N, theta_alpha, theta_beta);
 	std::clock_t end = std::clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
     printf("Measured from function call: %f seconds\n", elapsed_secs);
 
-    save_output(flat, image, argv[2], pixel_depth);
+
+    //
+    printf("Testing for double percision\n");
+    double* flat_double = get_flat_float_from_image<double>(image, pixel_depth);
+    begin = std::clock();
+    bilateral_filter_gpu<double>(flat_double, 3, 2, sdims, N, (double)theta_alpha, (double) theta_beta);
+    end = std::clock();
+    elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    printf("Measured from function call: %f seconds\n", elapsed_secs);
+    delete[] flat_double;
+     //
+
+    save_output<float>(flat, image, argv[2], pixel_depth);
 
     delete[] flat;
-    return 0;
 
+
+
+
+
+    return 0;
 }

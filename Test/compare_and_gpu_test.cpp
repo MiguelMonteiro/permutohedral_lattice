@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     int sdims[2]{image.height(), image.width()};
 
     //get a flat float array
-    auto flat_cpu = get_flat_float_from_image(image, pixel_depth);
+    auto flat_cpu = get_flat_float_from_image<float>(image, pixel_depth);
     //get a copy
     auto flat_gpu = new float[N*3]{0};
     for(int i = 0; i < N * 3; i++)
@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     {
         printf("Calling filter GPU...\n");
         std::clock_t begin = std::clock();
-        bilateral_filter_gpu(flat_gpu, 3, 2, sdims, N, theta_alpha, theta_beta);
+        bilateral_filter_gpu<float>(flat_gpu, 3, 2, sdims, N, theta_alpha, theta_beta);
         std::clock_t end = std::clock();
         double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
         printf("Measured from function call: %f seconds\n", elapsed_secs);

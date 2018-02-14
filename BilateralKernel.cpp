@@ -160,7 +160,6 @@ public:
                                    features_std);
 
 
-
         LatticeFilter<Device, T>()(context->eigen_device<Device>(),
                                    output_tensor->flat<T>().data(),
                                    input_tensor.flat<T>().data(),
@@ -169,6 +168,7 @@ public:
                                    pd,
                                    vd,
                                    reverse);
+
         cudaFree(spatial_dims_gpu);
         delete[](spatial_dims);
     }

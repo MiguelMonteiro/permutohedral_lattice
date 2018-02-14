@@ -386,7 +386,7 @@ __global__ static void blur(int n, T *newValues, MatrixEntry<T> *matrix, int col
     np[color] -= pd + 1;
     nm[color] += pd + 1;
 
-    int offNp = table.retrieve(np);
+/*    int offNp = table.retrieve(np);
     int offNm = table.retrieve(nm);
 
     //in case neighbours don't exist (lattice edges) offNp and offNm are -1
@@ -403,8 +403,26 @@ __global__ static void blur(int n, T *newValues, MatrixEntry<T> *matrix, int col
 
     for (int i = 0; i < vd; i++)
         valOut[i] = 0.25 * valNp[i] + 0.5 * valMe[i] + 0.25 * valNm[i];
-    //valOut[i] = 0.5f * valNp[i] + 1.0f * valMe[i] + 0.5f * valNm[i];
+    //valOut[i] = 0.5f * valNp[i] + 1.0f * valMe[i] + 0.5f * valNm[i];*/
+    int offNp = table.retrieve(np);
+    int offNm = table.retrieve(nm);
 
+
+    //in case neighbours don't exist (lattice edges) offNp and offNm are -1
+    T *valMe = table.values + vd * idx;
+    T *valOut = newValues + vd * idx;
+
+    //T zeros[vd]{0};
+    T *valNp = valMe;
+    T *valNm = valMe;
+    if(offNp >= 0)
+        valNp = table.values + vd * offNp;
+    if(offNm >= 0)
+        valNm = table.values + vd * offNm;
+
+    for (int i = 0; i < vd; i++)
+        valOut[i] = 0.25 * valNp[i] + 0.5 * valMe[i] + 0.25 * valNm[i];
+    //valOut[i] = 0.5f * valNp[i] + 1.0f * valMe[i] + 0.5f * valNm[i];
 
 }
 
@@ -554,12 +572,7 @@ public:
 };
 
 
-template<typename T, int pd, int vd>
-void filter(T *output, const T *input, const T *positions, int n, bool reverse) {
-    auto lattice = PermutohedralLatticeGPU<T, pd, vd>(n);
-    lattice.filter(output, input, positions, reverse);
 
-}
 
 template<typename T>
 __global__ static void compute_kernel(const T * reference,

@@ -77,6 +77,7 @@ template struct ComputeKernel<GPUDevice, float>;
 template struct LatticeFilter<GPUDevice, float>;
 template struct ComputeKernel<GPUDevice, double>;
 template struct LatticeFilter<GPUDevice, double>;
+
 //template struct LatticeFilter<GPUDevice, int32>;
 
 #endif  // GOOGLE_CUDA
