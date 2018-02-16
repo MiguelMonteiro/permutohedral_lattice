@@ -8,6 +8,18 @@
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
 #include "PermutohedralLatticeGPU.cuh"
 
+
+#ifndef SPATIAL_DIMS
+#define SPATIAL_DIMS 2
+#endif
+#ifndef INPUT_CHANNELS
+#define INPUT_CHANNELS 3
+#endif
+#ifndef REFERENCE_CHANNELS
+#define REFERENCE_CHANNELS 3
+#endif
+
+
 using namespace tensorflow;
 
 using GPUDevice = Eigen::GpuDevice;
@@ -55,31 +67,20 @@ void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
                                              int vd,
                                              bool reverse) {
 
-
-    if(pd == 5 && vd == 4){
+    //bilateral
+    if(pd == SPATIAL_DIMS + REFERENCE_CHANNELS && vd == INPUT_CHANNELS + 1){
         auto lattice = PermutohedralLatticeGPU<T, 5, 4>(num_super_pixels, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }
-    if(pd == 2 && vd == 4){
+    //spatial only
+    if(pd == SPATIAL_DIMS && vd == INPUT_CHANNELS + 1){
         auto lattice = PermutohedralLatticeGPU<T, 2, 4>(num_super_pixels, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }
-
-    if(pd == 4 && vd == 2){
-        auto lattice = PermutohedralLatticeGPU<T, 4, 2>(num_super_pixels, d.stream());
-        lattice.filter(output, input, positions, reverse);
-        return;
-    }
-    if(pd == 3 && vd == 2){
-        auto lattice = PermutohedralLatticeGPU<T, 3, 2>(num_super_pixels, d.stream());
-        lattice.filter(output, input, positions, reverse);
-        return;
-    }
-
     else{
-        throw OpNotImplemented;
+        LOG(FATAL) << "GPU filter not compiled for these spatial dimensions, input and/or reference channels";
     }
 }
 

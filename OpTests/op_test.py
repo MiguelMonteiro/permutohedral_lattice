@@ -16,7 +16,7 @@ im = Image.open("../Images/input.bmp")
 tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
 tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
 
-output = module.bilateral(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta)
+output = module.lattice_filter(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta)
 
 
 with tf.Session() as sess:

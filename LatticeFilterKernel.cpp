@@ -120,7 +120,10 @@ public:
         cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
         cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
 
-        //long long * a = input_tensor.shape().dim_sizes().data();
+        /*long long * a = input_tensor.shape().dim_sizes().data(); //this is only on CPU
+        for(int i = 0; i < 2; i++){
+            printf("%d\n ", static_cast<int>(a[i]));
+        }*/
 
         auto n_input_channels = static_cast<int>(input_tensor.dim_size(rank - 1));
         vd = n_input_channels + 1;
