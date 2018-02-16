@@ -2,7 +2,7 @@
 // Created by Miguel Monteiro on 29/01/2018.
 //
 
-#include "BilateralKernel.h"
+#include "LatticeFilterKernel.h"
 #include "PermutohedralLatticeCPU.h"
 #include "cstdio"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -15,7 +15,7 @@ using namespace tensorflow;
 
 using namespace tensorflow;
 
-REGISTER_OP("Bilateral")
+REGISTER_OP("LatticeFilter")
         .Attr("T: {float32, float64}")
         .Attr("reverse: bool = false")
         .Attr("bilateral: bool = true")
@@ -78,9 +78,9 @@ struct LatticeFilter<CPUDevice, T> {
 // OpKernel definition.
 // template parameter <T> is the datatype of the tensors.
 template <typename Device, typename T>
-class BilateralOp : public OpKernel {
+class LatticeFilterOp : public OpKernel {
 public:
-    explicit BilateralOp(OpKernelConstruction* context) : OpKernel(context) {
+    explicit LatticeFilterOp(OpKernelConstruction* context) : OpKernel(context) {
         OP_REQUIRES_OK(context, context->GetAttr("reverse", &reverse));
         OP_REQUIRES_OK(context, context->GetAttr("bilateral", &bilateral));
         OP_REQUIRES_OK(context, context->GetAttr("theta_alpha", &theta_alpha));
@@ -196,7 +196,7 @@ private:
 extern template struct LatticeFilter<GPUDevice, float>;
 extern template struct LatticeFilter<GPUDevice, double>;
 
-#define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_GPU).TypeConstraint<T>("T"), BilateralOp<GPUDevice, T>);
+#define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_GPU).TypeConstraint<T>("T"), LatticeFilterOp<GPUDevice, T>);
 
 REGISTER_GPU(float);
 REGISTER_GPU(double);

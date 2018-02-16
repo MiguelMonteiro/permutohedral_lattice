@@ -1,10 +1,10 @@
 
-# CPU Test executable
+# CPU LatticeTests executable
 add_executable(bilateral_cpu_test
-        Test/bilateral_cpu_test.cpp
-        Test/bilateral_filter_cpu.h
-        Test/CImg.h
-        Test/utils.h
+        LatticeTests/bilateral_cpu_test.cpp
+        LatticeTests/bilateral_filter_cpu.h
+        LatticeTests/CImg.h
+        LatticeTests/utils.h
         PermutohedralLatticeCPU.h)
 
 if (LINUX)
@@ -15,7 +15,7 @@ endif ()
 
 
 # CUDA Library
-add_library(permutohedral STATIC Test/PermutohedralLatticeGPU.cu PermutohedralLatticeGPU.cuh)
+add_library(permutohedral STATIC LatticeTests/PermutohedralLatticeGPU.cu PermutohedralLatticeGPU.cuh)
 
 # Request that permutohedral be built with -std=c++11
 # As this is a public compile feature anything that links to
@@ -29,10 +29,10 @@ set_target_properties(permutohedral PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # GPU test executable
 add_executable(bilateral_gpu_test
-        Test/bilateral_gpu_test.cpp
-        Test/bilateral_filter_gpu.h
-        Test/CImg.h
-        Test/utils.h)
+        LatticeTests/bilateral_gpu_test.cpp
+        LatticeTests/bilateral_filter_gpu.h
+        LatticeTests/CImg.h
+        LatticeTests/utils.h)
 
 
 set_property(TARGET bilateral_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)
@@ -48,11 +48,11 @@ endif()
 # CPU and GPU compare executable
 
 add_executable(compare_and_gpu_test
-        Test/compare_and_gpu_test.cpp
-        Test/bilateral_filter_cpu.h
-        Test/bilateral_filter_gpu.h
-        Test/CImg.h
-        Test/utils.h
+        LatticeTests/compare_and_gpu_test.cpp
+        LatticeTests/bilateral_filter_cpu.h
+        LatticeTests/bilateral_filter_gpu.h
+        LatticeTests/CImg.h
+        LatticeTests/utils.h
         PermutohedralLatticeCPU.h)
 
 set_property(TARGET compare_and_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)

@@ -2,7 +2,7 @@
 
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
-#include "BilateralKernel.h"
+#include "LatticeFilterKernel.h"
 
 #include "tensorflow/core/framework/op_kernel.h"
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
@@ -66,6 +66,18 @@ void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
         lattice.filter(output, input, positions, reverse);
         return;
     }
+
+    if(pd == 4 && vd == 2){
+        auto lattice = PermutohedralLatticeGPU<T, 4, 2>(num_super_pixels, d.stream());
+        lattice.filter(output, input, positions, reverse);
+        return;
+    }
+    if(pd == 3 && vd == 2){
+        auto lattice = PermutohedralLatticeGPU<T, 3, 2>(num_super_pixels, d.stream());
+        lattice.filter(output, input, positions, reverse);
+        return;
+    }
+
     else{
         throw OpNotImplemented;
     }
