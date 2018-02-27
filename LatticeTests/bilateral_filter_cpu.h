@@ -20,12 +20,13 @@ static void bilateral_filter_cpu(T *input,
 
     printf("Constructing kernel...\n");
     auto positions = new T[num_super_pixels * pd];
-    compute_bilateral_kernel_cpu<T>(input, positions, n, 3, 2, sdims, theta_alpha, theta_beta);
+    compute_kernel_cpu<T>(input, positions, n, 3, 2, sdims, theta_alpha, theta_beta);
 
     printf("Calling filter...\n");
-    auto output = new T[num_super_pixels * n_input_channels]{0};
+    auto output = new T[num_super_pixels * n_input_channels];
 
-    lattice_filter_cpu<T>(output, input, positions, pd, vd, n);
+    auto lattice = PermutohedralLatticeCPU<T>(pd, vd, n);
+    lattice.filter(output, input, positions, false);
 
     //std::swap(input, output);
     std::memcpy(input, output, num_super_pixels * n_input_channels * sizeof(T));

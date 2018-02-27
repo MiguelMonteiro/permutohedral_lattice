@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     //get a flat float array
     auto flat_cpu = get_flat_float_from_image<float>(image, pixel_depth);
     //get a copy
-    auto flat_gpu = new float[N*3]{0};
+    auto flat_gpu = new float[N*3];
     for(int i = 0; i < N * 3; i++)
         flat_gpu[i] = flat_cpu[i];
 

@@ -82,18 +82,18 @@ template <typename T>class HashTableCPU {
         capacity *= 2;
 
         // Migrate the value vectors.
-        auto *newValues = new T[vd * capacity / 2]{0};
+        auto newValues = new T[vd * capacity / 2]{0};
         std::memcpy(newValues, values, sizeof(T) * vd * filled);
         delete[] values;
         values = newValues;
 
         // Migrate the key vectors.
-        auto *newKeys = new short[pd * capacity / 2];
+        auto newKeys = new short[pd * capacity / 2];
         std::memcpy(newKeys, keys, sizeof(short) * pd * filled);
         delete[] keys;
         keys = newKeys;
 
-        auto *newEntries = new int[capacity];
+        auto newEntries = new int[capacity];
         memset(newEntries, -1, capacity*sizeof(int));
 
         // Migrate the table of indices.
@@ -408,33 +408,34 @@ protected:
 
 
     /* Performs a Gaussian blur along each projected axis in the hyperplane. */
-    void blur() {
+    void blur(bool reverse) {
 
         // Prepare arrays
-        auto *n1_key = new short[pd + 1];
-        auto *n2_key = new short[pd + 1];
+        auto n1_key = new short[pd + 1];
+        auto n2_key = new short[pd + 1];
 
         //old and new values contain the lattice points before and after blur
         auto new_values = new T[vd * hashTable.size()];
         T *old_values = hashTable.getValues();
         T *hashTableBase = old_values;
 
-        auto *zero = new T[vd]{0};
+        auto zero = new T[vd]{0};
         //for (int k = 0; k < vd; k++)
         //    zero[k] = 0;
 
         // For each of pd+1 axes,
-        for (int j = 0; j <= pd; j++) {
+
+        for (int remainder=reverse?pd:0; remainder >= 0 && remainder <= pd; reverse?remainder--:remainder++){
             // For each vertex in the lattice,
             for (int i = 0; i < hashTable.size(); i++) { // blur point i in dimension j
-
                 short *key = hashTable.getKeys() + i * (pd); // keys to current vertex
                 for (int k = 0; k < pd; k++) {
                     n1_key[k] = key[k] + 1;
                     n2_key[k] = key[k] - 1;
                 }
-                n1_key[j] = key[j] - pd;
-                n2_key[j] = key[j] + pd; // keys to the neighbors along the given axis.
+
+                n1_key[remainder] = key[remainder] - pd;
+                n2_key[remainder] = key[remainder] + pd; // keys to the neighbors along the given axis.
 
                 T *oldVal = old_values + i * vd;
                 T *newVal = new_values + i * vd;
@@ -504,42 +505,41 @@ public:
 
     }
 
-    void filter(T * output, const T* input, const T* positions) {
+    void filter(T * output, const T* input, const T* positions, bool reverse) {
         splat(positions, input);
-        blur();
+        blur(reverse);
         slice(output);
     }
 
 };
 
 
-template <typename T> static void compute_bilateral_kernel_cpu(const T * reference,
-                                                               T * positions,
-                                                               int num_super_pixels,
-                                                               int reference_channels,
-                                                               int n_sdims,
-                                                               const int *sdims,
-                                                               T theta_alpha,
-                                                               T theta_beta){
+
+template <typename T>
+static void compute_kernel_cpu(const T * reference,
+                                         T * positions,
+                                         int num_super_pixels,
+                                         int reference_channels,
+                                         int n_sdims,
+                                         const int *sdims,
+                                         T spatial_std,
+                                         T feature_std){
 
     int num_dims = n_sdims + reference_channels;
 
-    for(int p = 0; p < num_super_pixels; p++){
+    for(int idx = 0; idx < num_super_pixels; idx++){
         int divisor = 1;
         for(int sdim = n_sdims - 1; sdim >= 0; sdim--){
-            positions[num_dims * p + sdim] = ((p / divisor) % sdims[sdim]) / theta_alpha;
+            positions[num_dims * idx + sdim] = ((idx / divisor) % sdims[sdim]) / spatial_std;
             divisor *= sdims[sdim];
         }
         for(int channel = 0; channel < reference_channels; channel++){
-            positions[num_dims * p + n_sdims + channel] = reference[p * reference_channels + channel] / theta_beta;
+            positions[num_dims * idx + n_sdims + channel] = reference[idx * reference_channels + channel] / feature_std;
         }
     }
 };
 
-template <typename T> static void lattice_filter_cpu(T * output, const T *input, const T *positions, int pd, int vd, int n){
-    PermutohedralLatticeCPU<T> lattice(pd, vd, n);
-    lattice.filter(output, input, positions);
-}
+
 
 
 #endif //PERMUTOHEDRAL_LATTICE_CPU_H

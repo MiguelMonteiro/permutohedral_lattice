@@ -34,46 +34,39 @@ REGISTER_OP("LatticeFilter")
 using CPUDevice = Eigen::ThreadPoolDevice;
 using GPUDevice = Eigen::GpuDevice;
 
-/*
+
 // CPU specialization of actual computation.
-template <typename T>
-struct LatticeFilter<CPUDevice, T> {
+template<typename T>
+struct ComputeKernel<CPUDevice, T>{
     void operator()(const CPUDevice& d,
-                    T * output,
-                    const T *input,
                     const T *reference_image,
+                    T * positions,
                     int num_super_pixels,
                     int n_spatial_dims,
                     int *spatial_dims,
-                    int n_input_channels,
                     int n_reference_channels,
-                    float theta_alpha,
-                    float theta_beta,
-                    bool reverse) {
-
-        int pd = n_reference_channels + n_spatial_dims;
-        int vd = n_input_channels + 1;
-        int n = num_super_pixels;
-
-
-
-        auto positions= new float[num_super_pixels * pd];
-
-        compute_bilateral_kernel_cpu(reference_image,
-                                     positions,
-                                     num_super_pixels,
-                                     n_reference_channels,
-                                     n_spatial_dims,
-                                     spatial_dims,
-                                     theta_alpha,
-                                     theta_beta);
-
-        lattice_filter_cpu(output, input, positions, pd, vd, n);
-
-        delete[] positions;
+                    T spatial_std,
+                    T features_std){
+        compute_kernel_cpu<T>(reference_image, positions, num_super_pixels, n_reference_channels, n_spatial_dims,
+                              spatial_dims, spatial_std, features_std);
     }
 };
-*/
+
+template <typename T>
+struct LatticeFilter<CPUDevice, T>{
+    void operator()(const CPUDevice& d,
+               T* output,
+               const T *input,
+               const T *positions,
+               int num_super_pixels,
+               int pd,
+               int vd,
+               bool reverse){
+        PermutohedralLatticeCPU<T> lattice(pd, vd, num_super_pixels);
+        lattice.filter(output, input, positions, reverse);
+    }
+};
+
 
 // OpKernel definition.
 // template parameter <T> is the datatype of the tensors.
@@ -194,10 +187,10 @@ private:
 };
 
 // Register the CPU kernels.
-#define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("Bilateral").Device(DEVICE_CPU).TypeConstraint<T>("T"), BilateralOp<CPUDevice, T>);
+#define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), LatticeFilterOp<CPUDevice, T>);
 
-//REGISTER_CPU(float);
-//REGISTER_CPU(int32);
+REGISTER_CPU(float);
+REGISTER_CPU(double);
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
