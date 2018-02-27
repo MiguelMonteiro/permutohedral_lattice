@@ -579,7 +579,6 @@ __global__ static void compute_kernel(const T * reference,
     for(int channel = 0; channel < reference_channels; channel++){
         positions[num_dims * idx + n_sdims + channel] = reference[idx * reference_channels + channel] / feature_std;
     }
-
 }
 
 
