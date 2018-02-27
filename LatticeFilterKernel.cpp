@@ -4,7 +4,6 @@
 
 #include "LatticeFilterKernel.h"
 #include "PermutohedralLatticeCPU.h"
-#include "cstdio"
 #include "tensorflow/core/framework/op_kernel.h"
 
 using namespace tensorflow;
@@ -13,7 +12,6 @@ using namespace tensorflow;
 #include "tensorflow/core/framework/shape_inference.h"
 #include "cuda_runtime.h"
 
-using namespace tensorflow;
 
 REGISTER_OP("LatticeFilter")
         .Attr("T: {float32, float64}")
@@ -173,17 +171,15 @@ private:
     float theta_alpha;
     float theta_beta;
     float theta_gamma;
-
     int pd;
     int vd;
-
 };
 
 // Register the CPU kernels.
 #define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), LatticeFilterOp<CPUDevice, T>);
 
-REGISTER_CPU(float);
-REGISTER_CPU(double);
+//REGISTER_CPU(float);
+//REGISTER_CPU(double);
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
@@ -193,6 +189,6 @@ extern template struct LatticeFilter<GPUDevice, double>;
 
 #define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_GPU).TypeConstraint<T>("T"), LatticeFilterOp<GPUDevice, T>);
 
-//REGISTER_GPU(float);
-//REGISTER_GPU(double);
+REGISTER_GPU(float);
+REGISTER_GPU(double);
 #endif  // GOOGLE_CUDA
