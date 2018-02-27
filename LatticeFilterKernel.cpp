@@ -62,7 +62,7 @@ struct LatticeFilter<CPUDevice, T>{
                int pd,
                int vd,
                bool reverse){
-        PermutohedralLatticeCPU<T> lattice(pd, vd, num_super_pixels);
+        auto lattice = PermutohedralLatticeCPU<T>(pd, vd, num_super_pixels);
         lattice.filter(output, input, positions, reverse);
     }
 };
@@ -109,17 +109,12 @@ public:
             spatial_dims[i] = dim_size;
         }
 
-        int* spatial_dims_gpu;
-        cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
-        cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
-
         /*long long * a = input_tensor.shape().dim_sizes().data(); //this is only on CPU
         for(int i = 0; i < 2; i++){
             printf("%d\n ", static_cast<int>(a[i]));
         }*/
 
         vd = n_input_channels + 1;
-
         T spatial_std;
         T features_std;
         int n_reference_channels;
@@ -136,7 +131,6 @@ public:
             spatial_std = theta_gamma;
             features_std = -1; //does not matter
         }
-
 
         // Allocate kernel positions and calculate them
         Tensor positions;
@@ -156,7 +150,7 @@ public:
                                        pos_ptr,
                                        num_super_pixels,
                                        n_spatial_dims,
-                                       spatial_dims_gpu,
+                                       spatial_dims,
                                        n_reference_channels,
                                        spatial_std,
                                        features_std);
@@ -170,7 +164,6 @@ public:
                                        vd,
                                        reverse);
         }
-        cudaFree(spatial_dims_gpu);
         delete[](spatial_dims);
     }
 
@@ -200,6 +193,6 @@ extern template struct LatticeFilter<GPUDevice, double>;
 
 #define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_GPU).TypeConstraint<T>("T"), LatticeFilterOp<GPUDevice, T>);
 
-REGISTER_GPU(float);
-REGISTER_GPU(double);
+//REGISTER_GPU(float);
+//REGISTER_GPU(double);
 #endif  // GOOGLE_CUDA

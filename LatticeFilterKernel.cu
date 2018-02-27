@@ -1,4 +1,3 @@
-
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
 #include "LatticeFilterKernel.h"
@@ -43,13 +42,17 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
                                              T spatial_std,
                                              T features_std){
 
+    int* spatial_dims_gpu;
+    cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
+    cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
+
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
 
     compute_kernel<T><<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
-            num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims, spatial_std, features_std);
+            num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims_gpu, spatial_std, features_std);
 
-
+    cudaFree(spatial_dims_gpu);
 };
 
 //declaration of what lattices (pd and vd) can be used

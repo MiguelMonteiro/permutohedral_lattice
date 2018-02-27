@@ -11,7 +11,7 @@ theta_alpha = 20.0
 theta_beta = 0.125
 
 shape=[1200, 800, 3]
-im = Image.open("../Images/small_input.bmp")
+im = Image.open("../Images/input.bmp")
 
 tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
 tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
@@ -20,7 +20,6 @@ tf_input_batch = tf.stack([tf_input_image, tf_input_image])
 tf_reference_batch = tf.stack([tf_reference_image, tf_reference_image])
 
 output = module.lattice_filter(tf_input_batch, tf_reference_batch, theta_alpha=theta_alpha, theta_beta=theta_beta)
-
 
 with tf.Session() as sess:
     o = np.round(sess.run(output) * 255).astype(np.uint8)
