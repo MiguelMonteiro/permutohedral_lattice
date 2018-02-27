@@ -24,32 +24,24 @@ string(REGEX REPLACE "\n$" "" TF_LIB "${TF_LIB}")
 include_directories(${TF_INC} ${TF_INC}/external/nsync/public)
 link_directories(${TF_LIB})
 
-set(LatticeTests TRUE)
+set(LatticeTests False)
 
 if (LatticeTests)
     include(CMakeTests)
 endif ()
 
 
-
-####
-
-
-#
-# CUDA Library
-
 #[[]]
-add_library(cuda_bilateral SHARED LatticeFilterKernel.cu LatticeFilterKernel.h)
-target_compile_features(cuda_bilateral PUBLIC cxx_std_11)
-set_target_properties(cuda_bilateral  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+add_library(cuda_lattice_filter SHARED LatticeFilterKernel.cu LatticeFilterKernel.h)
+target_compile_features(cuda_lattice_filter PUBLIC cxx_std_11)
+set_target_properties(cuda_lattice_filter  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 #target_compile_options(cuda_bilateral PUBLIC "-D GOOGLE_CUDA=1" "--expt-relaxed-constexpr")
-target_compile_options(cuda_bilateral PUBLIC "-D GOOGLE_CUDA=1")
+target_compile_options(cuda_lattice_filter PUBLIC "-D GOOGLE_CUDA=1")
 
-
-add_library(bilateral SHARED LatticeFilterKernel.cpp LatticeFilterKernel.h PermutohedralLatticeCPU.h)
-target_compile_options(bilateral PUBLIC "-D GOOGLE_CUDA=1")
-target_link_libraries(bilateral PUBLIC tensorflow_framework cuda_bilateral)
-set_target_properties(bilateral PROPERTIES PREFIX "")
+add_library(lattice_filter SHARED LatticeFilterKernel.cpp LatticeFilterKernel.h PermutohedralLatticeCPU.h)
+target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1")
+target_link_libraries(lattice_filter PUBLIC tensorflow_framework cuda_lattice_filter)
+set_target_properties(lattice_filter PROPERTIES PREFIX "")
 
 #if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0)
 #    target_compile_options(bilateral PUBLIC "-D GLIBCXX_USE_CXX11_ABI=0")

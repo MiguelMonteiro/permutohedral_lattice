@@ -23,7 +23,7 @@ with tf.Session() as sess:
     o = sess.run(output) * 255
 
 im = Image.fromarray(np.round(o).astype(np.uint8))
-im.save("this_is_it.bmp")
+im.save("up_here.bmp")
 
 
 #

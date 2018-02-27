@@ -1,10 +1,10 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
-module = tf.load_op_library('./bilateral.so')
+module = tf.load_op_library('./lattice_filter.so')
 
 
-@ops.RegisterGradient("Bilateral")
-def _bilateral_grad(op, grad):
+@ops.RegisterGradient("LatticeFilter")
+def _lattice_filter_grad(op, grad):
     """ Gradients for the HighDimFilter op. We only need to calculate the gradients
     w.r.t. the first input (unaries) as we never need to backprop errors to the
     second input (RGB values of the image).
