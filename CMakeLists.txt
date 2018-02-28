@@ -13,10 +13,6 @@ endif()
 #just needed for Clion code indexing
 include_directories(/usr/local/cuda/include/)
 
-#tensorflow
-#execute_process(COMMAND bash -c "python2 -c 'import tensorflow as tf; print(tf.sysconfig.get_include())'" OUTPUT_VARIABLE TF_INC)
-#execute_process(COMMAND bash -c "python2 -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())'" OUTPUT_VARIABLE TF_LIB)
-
 execute_process(COMMAND python2 -c "import tensorflow as tf;  print(tf.sysconfig.get_include())" OUTPUT_VARIABLE TF_INC)
 execute_process(COMMAND python2 -c "import tensorflow as tf; print(tf.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIB)
 string(REGEX REPLACE "\n$" "" TF_INC "${TF_INC}")
@@ -49,22 +45,6 @@ set_target_properties(lattice_filter PROPERTIES PREFIX "")
 #endif()
 
 
-#target_include_directories(cuda_kernel.o INTERFACE ${EIGEN3_INCLUDE_DIR} PRIVATE ${TF_INC} ${TF_INC}/external/nsync/public)
-#link_directories(${TF_LIB})
 
-
-
-
-####
-
-
-# CPU executable
-
-#if (LINUX)
-#    find_package(Threads REQUIRED)
-#    target_link_libraries(bilateral_cpu PRIVATE tensorflow_framework ${CMAKE_THREAD_LIBS_INIT}) #needed for CImg
-#else()
-#    target_link_libraries(bilateral_cpu PRIVATE tensorflow_framework)
-#endif ()
 
 
