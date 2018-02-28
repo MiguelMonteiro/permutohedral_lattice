@@ -39,8 +39,8 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
                                            initializer=tf.initializers.variance_scaling(distribution='uniform'))
 
     # only batch size = 1 for now, also unknown batch dimension going to be a problem
-    unaries = tf.unstack(unaries)[0]
-    reference_image = tf.unstack(reference_image)[0]
+    #unaries = tf.unstack(unaries)[0]
+    #reference_image = tf.unstack(reference_image)[0]
     #
 
     # c, h, w = self.num_classes, self.image_dims[0], self.image_dims[1]
@@ -56,9 +56,9 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
     q_values = unaries
     for i in range(num_iterations):
         softmax_out = tf.nn.softmax(q_values, dim=0)
-
         # Spatial filtering
         spatial_out = module.lattice_filter(softmax_out, reference_image, bilateral=False, theta_gamma=theta_gamma)
+
 
         spatial_out = spatial_out / spatial_norm_vals
 
@@ -84,7 +84,4 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
         #pairwise = tf.reshape(pairwise, unaries_shape)
         q_values = unaries - pairwise
 
-    # only keep probabilities for one class (rest is redundant)
-    #q_values = tf.split(q_values, 2, 0)[0]
     return q_values
-    #return tf.expand_dims(tf.transpose(q_values), axis=0)
