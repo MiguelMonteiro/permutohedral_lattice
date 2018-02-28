@@ -1,0 +1,65 @@
+
+# CPU LatticeTests executable
+add_executable(bilateral_cpu_test
+        LatticeTests/bilateral_cpu_test.cpp
+        LatticeTests/bilateral_filter_cpu.h
+        LatticeTests/CImg.h
+        LatticeTests/utils.h
+        PermutohedralLatticeCPU.h)
+
+if (LINUX)
+    find_package(Threads REQUIRED)
+    target_link_libraries(bilateral_cpu_test PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+endif ()
+
+
+
+# CUDA Library
+add_library(permutohedral STATIC LatticeTests/PermutohedralLatticeGPU.cu PermutohedralLatticeGPU.cuh)
+
+# Request that permutohedral be built with -std=c++11
+# As this is a public compile feature anything that links to
+# particles will also build with -std=c++11
+target_compile_features(permutohedral PUBLIC cxx_std_11)
+
+# We need to explicitly state that we need all CUDA files in the
+# permutohedral library to be built with -dc as the member functions
+# could be called by other libraries and executables
+set_target_properties(permutohedral PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+# GPU test executable
+add_executable(bilateral_gpu_test
+        LatticeTests/bilateral_gpu_test.cpp
+        LatticeTests/bilateral_filter_gpu.h
+        LatticeTests/CImg.h
+        LatticeTests/utils.h)
+
+
+set_property(TARGET bilateral_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(bilateral_gpu_test PRIVATE permutohedral)
+
+if(APPLE)
+    # We need to add the path to the driver (libcuda.dylib) as an rpath,
+    # so that the static cuda runtime can find it at runtime.
+    set_property(TARGET bilateral_gpu_test PROPERTY BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+endif()
+
+
+# CPU and GPU compare executable
+
+add_executable(compare_and_gpu_test
+        LatticeTests/compare_and_gpu_test.cpp
+        LatticeTests/bilateral_filter_cpu.h
+        LatticeTests/bilateral_filter_gpu.h
+        LatticeTests/CImg.h
+        LatticeTests/utils.h
+        PermutohedralLatticeCPU.h)
+
+set_property(TARGET compare_and_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+target_link_libraries(compare_and_gpu_test PRIVATE permutohedral)
+
+if(APPLE)
+    # We need to add the path to the driver (libcuda.dylib) as an rpath,
+    # so that the static cuda runtime can find it at runtime.
+    set_property(TARGET compare_and_gpu_test PROPERTY BUILD_RPATH ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+endif()
