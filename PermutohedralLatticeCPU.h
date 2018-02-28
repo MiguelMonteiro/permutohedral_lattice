@@ -160,7 +160,6 @@ public:
 
 
 template<typename T> class PermutohedralLatticeCPU {
-protected:
 
     int pd, vd, N;
     std::unique_ptr<int[]> canonical;
@@ -316,14 +315,15 @@ protected:
             T *val = hashTable.lookup(key, true);
 
             // Accumulate values with barycentric weight.
-            for (int i = 0; i < vd; i++)
+            for (int i = 0; i < vd - 1; i++)
                 val[i] += barycentric[remainder] * value[i];
+
+            val[vd - 1] += barycentric[remainder]; //homogeneous coordinate (as if value[vd-1]=1)
 
             // Record this interaction to use later when slicing
             replay[nReplay].offset = val - hashTable.getValues();
             replay[nReplay].weight = barycentric[remainder];
             nReplay++;
-
         }
 
         delete[] key;
@@ -342,23 +342,9 @@ protected:
 
 
     void splat(const T * positions, const T * values){
-
-        //auto col = std::unique_ptr<float[]>(new float[vd]);
-        auto col = new T[vd];
-        col[vd - 1] = 1; // homogeneous coordinate
-
-        T *imPtr = const_cast<T *>(values);
-        T *refPtr = const_cast<T *>(positions);
         for (int n = 0; n < N; n++) {
-
-            for (int c = 0; c < vd - 1; c++) {
-                col[c] = *imPtr++;
-            }
-
-            splat_point(refPtr, col);
-            refPtr += pd;
+            splat_point(&(positions[n*pd]), &(values[n*(vd-1)]));
         }
-        delete[] col;
     }
 
 
