@@ -10,8 +10,6 @@ using namespace tensorflow;
 
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
-#include "cuda_runtime.h"
-
 
 REGISTER_OP("LatticeFilter")
         .Attr("T: {float32, float64}")
