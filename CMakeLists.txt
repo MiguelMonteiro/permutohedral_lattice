@@ -36,7 +36,8 @@ add_library(cuda_lattice_filter SHARED LatticeFilterKernel.cu LatticeFilterKerne
 target_compile_features(cuda_lattice_filter PUBLIC cxx_std_11)
 set_target_properties(cuda_lattice_filter  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 #target_compile_options(cuda_bilateral PUBLIC "-D GOOGLE_CUDA=1" "--expt-relaxed-constexpr")
-target_compile_options(cuda_lattice_filter PUBLIC "-D GOOGLE_CUDA=1")
+target_compile_options(cuda_lattice_filter PUBLIC "-D GOOGLE_CUDA=1" "-D SPATIAL_DIMS=${SPATIAL_DIMS}"
+        "-D INPUT_CHANNELS=${INPUT_CHANNELS}" "-D REFERENCE_CHANNELS=${REFERENCE_CHANNELS}")
 
 add_library(lattice_filter SHARED LatticeFilterKernel.cpp LatticeFilterKernel.h PermutohedralLatticeCPU.h)
 target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1")
