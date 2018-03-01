@@ -21,10 +21,12 @@ theta_alpha=8
 theta_beta=0.125
 theta_gamma=1
 num_iterations = 1
-print('adfa')
 output = crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta, theta_gamma, num_iterations)
 print output.shape
 init = tf.global_variables_initializer()
 with tf.Session() as sess:
     sess.run(init)
-    o = sess.run(output)
+    o = np.round(sess.run(output) * 255).astype(np.uint8)
+
+#im = Image.fromarray(o[0])
+#im.save('output.bmp')

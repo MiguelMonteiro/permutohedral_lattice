@@ -38,12 +38,6 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
     compatibility_matrix = tf.get_variable('compatibility_matrix', shape=(num_classes, num_classes),
                                            initializer=tf.initializers.variance_scaling(distribution='uniform'))
 
-    # only batch size = 1 for now, also unknown batch dimension going to be a problem
-    #unaries = tf.unstack(unaries)[0]
-    #reference_image = tf.unstack(reference_image)[0]
-    #
-
-    # c, h, w = self.num_classes, self.image_dims[0], self.image_dims[1]
     unaries_shape = unaries.get_shape()
 
     all_ones = np.ones(unaries_shape, dtype=np.float32)
@@ -56,6 +50,7 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
     q_values = unaries
     for i in range(num_iterations):
         softmax_out = tf.nn.softmax(q_values, dim=0)
+
         # Spatial filtering
         spatial_out = module.lattice_filter(softmax_out, reference_image, bilateral=False, theta_gamma=theta_gamma)
 
