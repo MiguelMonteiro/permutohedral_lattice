@@ -8,7 +8,6 @@
 
 #include <cuda_runtime.h>
 
-#define GOOGLE_CUDA
 #ifdef GOOGLE_CUDA
 
 #include "tensorflow/core/framework/op_kernel.h"
@@ -21,12 +20,13 @@ class DeviceMemoryAllocator {
     OpKernelContext* context;
 
     //allocator has a capacity to store 100 tensors
-    Tensor tensors[100];
+    Tensor tensors[10];
     int filled;
+
+public:
 
     DeviceMemoryAllocator(OpKernelContext* context_): context(context_), filled(0){}
 
-public:
     template<typename t>
     void allocate_device_memory(void ** ptr_address, int num_elements){
         DataType dataType = DT_UINT8;
@@ -53,11 +53,9 @@ public:
 
 class DeviceMemoryAllocator {
 
-    //allocator has a capacity to store 100 pointers
-    void** ptr_addresses[100];
+    //allocator has a capacity to store 10 pointers
+    void** ptr_addresses[10];
     int filled;
-
-    DeviceMemoryAllocator(): filled(0){}
 
     ~DeviceMemoryAllocator(){
         for(int i=0; i < filled; i++)
@@ -65,6 +63,9 @@ class DeviceMemoryAllocator {
     }
 
 public:
+
+    DeviceMemoryAllocator(): filled(0){}
+
     template<typename t>
     void allocate_device_memory(void ** ptr_address, int num_elements){
         cudaMalloc(ptr_address, num_elements*sizeof(t));

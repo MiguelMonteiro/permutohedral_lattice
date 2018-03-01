@@ -15,7 +15,7 @@ endif ()
 
 
 # CUDA Library
-add_library(permutohedral STATIC LatticeTests/PermutohedralLatticeGPU.cu PermutohedralLatticeGPU.cuh)
+add_library(permutohedral STATIC LatticeTests/PermutohedralLatticeGPU.cu PermutohedralLatticeGPU.cuh DeviceMemoryAllocator.h)
 
 # Request that permutohedral be built with -std=c++11
 # As this is a public compile feature anything that links to

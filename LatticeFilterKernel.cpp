@@ -107,11 +107,6 @@ public:
             spatial_dims[i] = dim_size;
         }
 
-        /*long long * a = input_tensor.shape().dim_sizes().data(); //this is only on CPU
-        for(int i = 0; i < 2; i++){
-            printf("%d\n ", static_cast<int>(a[i]));
-        }*/
-
         vd = n_input_channels + 1;
         T spatial_std;
         T features_std;
@@ -135,6 +130,8 @@ public:
         OP_REQUIRES_OK(context, context->allocate_temp(DataTypeToEnum<T>::v(),
                                                        TensorShape({batch_size * num_super_pixels * pd}),
                                                        &positions));
+
+        auto allocator = DeviceMemoryAllocator(context);
 
         for(int b=0; b < batch_size; b++){
 

@@ -5,6 +5,8 @@
 #ifndef PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H
 #define PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H
 #include "tensorflow/core/framework/op_kernel.h"
+#include "DeviceMemoryAllocator.h"
+
 using namespace tensorflow;
 
 template<typename Device, typename T>

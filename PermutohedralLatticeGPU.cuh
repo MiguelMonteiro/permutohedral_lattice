@@ -7,10 +7,7 @@
 
 #include "cuda_code_indexing.h"
 #include "cuda_runtime.h"
-#include <stdexcept>
-#include "tensorflow/core/framework/op_kernel.h"
-
-using namespace tensorflow;
+#include "DeviceMemoryAllocator.h"
 
 //64 bit implementation not implemented for compute capability < 6.0
 // none trivial performance cost for compute capability < 6.0
@@ -31,58 +28,25 @@ __device__ double atomicAdd(double* address, double val)
 #endif
 
 
-template<typename t>
-void allocate_device_memory_as_bytes(OpKernelContext* context,
-                                     void ** ptr_address,
-                                     Tensor *tensor_ptr,
-                                     int num_elements){
-    DataType dataType = DT_UINT8;
-    num_elements *= sizeof(t);
-    OP_REQUIRES_OK(context, context->allocate_temp(dataType, TensorShape({num_elements}), tensor_ptr));
-    *ptr_address = reinterpret_cast<t*>((*tensor_ptr).flat<unsigned char>().data());
-}
-
-template<typename t>
-void allocate_device_memory(OpKernelContext* context,
-                                                 void ** ptr_address,
-                                                 Tensor *tensor_ptr,
-                                                 int num_elements){
-    DataType dataType = DataTypeToEnum<t>::v();
-    OP_REQUIRES_OK(context, context->allocate_temp(dataType, TensorShape({num_elements}), tensor_ptr));
-    *ptr_address = (*tensor_ptr).flat<t>().data();
-}
-
-
-
 template<typename T, int pd, int vd>class HashTableGPU{
 public:
     int capacity;
     T * values;
     short * keys;
     int * entries;
-    bool original; //is this the original table or a copy?
 
-    Tensor t_values;
-    Tensor t_keys;
-    Tensor t_entries;
+    HashTableGPU(int capacity_, DeviceMemoryAllocator* allocator): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr){
 
-
-    HashTableGPU(int capacity_, OpKernelContext* context): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
-
-        //cudaMalloc((void**)&values, capacity*vd*sizeof(T));
-        allocate_device_memory<T>(context, (void**)&values, &t_values, capacity * vd);
+        allocator->allocate_device_memory<T>((void**)&values, capacity * vd);
         cudaMemset((void *)values, 0, capacity*vd*sizeof(T));
 
-        //cudaMalloc((void **)&entries, capacity*2*sizeof(int));
-        allocate_device_memory<int>(context, (void**)&entries, &t_entries, capacity * 2);
+
+        allocator->allocate_device_memory<int>((void**)&entries, capacity * 2);
         cudaMemset((void *)entries, -1, capacity*2*sizeof(int));
 
-        //cudaMalloc((void **)&keys, capacity*pd*sizeof(short));
-        allocate_device_memory<short>(context, (void**)&keys, &t_keys, capacity * pd);
+        allocator->allocate_device_memory<short>((void**)&keys, capacity * pd);
         cudaMemset((void *)keys, 0, capacity*pd*sizeof(short));
     }
-
-    HashTableGPU(const HashTableGPU& table):capacity(table.capacity), values(table.values), keys(table.keys), entries(table.entries), original(false){}
 
     __device__ int modHash(unsigned int n){
         return(n % (2 * capacity));
@@ -460,15 +424,10 @@ public:
     MatrixEntry<T>* matrix;
     HashTableGPU<T, pd, vd> hashTable;
     cudaStream_t stream;
-
     T * newValues; // auxiliary array for blur stage
 
-    Tensor t_canonical;
-    Tensor t_scaleFactor;
-    Tensor t_matrix;
-    Tensor t_newValues;
 
-    void init_canonical(OpKernelContext* context){
+    void init_canonical(DeviceMemoryAllocator* allocator){
         int hostCanonical[(pd + 1) * (pd + 1)];
         //auto canonical = new int[(pd + 1) * (pd + 1)];
         // compute the coordinates of the canonical simplex, in which
@@ -480,44 +439,38 @@ public:
             for (int j = pd - i + 1; j <= pd; j++)
                 hostCanonical[i * (pd + 1) + j] = i - (pd + 1);
         }
-        int n_elements =  (pd + 1) * (pd + 1);
-        //cudaMalloc((void**)&(canonical), n_elements * sizeof(int));
-        allocate_device_memory<int>(context, (void**)&canonical, &t_canonical, n_elements);
-        cudaMemcpy(canonical, hostCanonical, n_elements * sizeof(int), cudaMemcpyHostToDevice);
+        allocator->allocate_device_memory<int>((void**)&canonical,  (pd + 1) * (pd + 1));
+        cudaMemcpy(canonical, hostCanonical,  (pd + 1) * (pd + 1) * sizeof(int), cudaMemcpyHostToDevice);
     }
 
 
-    void init_scaleFactor(OpKernelContext* context){
+    void init_scaleFactor(DeviceMemoryAllocator* allocator){
         T hostScaleFactor[pd];
         T invStdDev = (pd + 1) * sqrt(2.0f / 3);
         for (int i = 0; i < pd; i++) {
             hostScaleFactor[i] = 1.0f / (sqrt((T) (i + 1) * (i + 2))) * invStdDev;
         }
-        //size_t size =  pd*sizeof(T);
-        //cudaMalloc((void**)&(scaleFactor), size);
-        allocate_device_memory<T>(context, (void**)&scaleFactor, &t_scaleFactor, pd);
+        allocator->allocate_device_memory<T>((void**)&scaleFactor, pd);
         cudaMemcpy(scaleFactor, hostScaleFactor, pd * sizeof(T), cudaMemcpyHostToDevice);
     }
 
-    void init_matrix(OpKernelContext* context){
-        allocate_device_memory_as_bytes<MatrixEntry<T>>(context, (void**)&matrix, &t_matrix, n * (pd + 1));
-        //cudaMalloc((void**)&(matrix), n * (pd + 1) * sizeof(MatrixEntry<T>));
+    void init_matrix(DeviceMemoryAllocator* allocator){
+        allocator->allocate_device_memory<MatrixEntry<T>>((void**)&matrix, n * (pd + 1));
     }
 
-    void init_newValues(OpKernelContext* context){
-        //cudaMalloc((void **) &(newValues), n * (pd + 1) * vd * sizeof(T));
-        allocate_device_memory<T>(context, (void**)&newValues, &t_newValues, n * (pd + 1) * vd);
+    void init_newValues(DeviceMemoryAllocator* allocator){
+        allocator->allocate_device_memory<T>((void**)&newValues,  n * (pd + 1) * vd);
         cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(T));
     }
 
 
-    PermutohedralLatticeGPU(int n_, OpKernelContext* context, cudaStream_t stream_=0):
+    PermutohedralLatticeGPU(int n_, DeviceMemoryAllocator* allocator, cudaStream_t stream_=0):
             n(n_),
             canonical(nullptr),
             scaleFactor(nullptr),
             matrix(nullptr),
             newValues(nullptr),
-            hashTable(HashTableGPU<T, pd, vd>(n * (pd + 1), context)),
+            hashTable(HashTableGPU<T, pd, vd>(n * (pd + 1), allocator)),
             stream(stream_){
 
         if (n >= 65535 * BLOCK_SIZE) {
@@ -526,10 +479,10 @@ public:
         }
 
         // initialize device memory
-        init_canonical(context);
-        init_scaleFactor(context);
-        init_matrix(context);
-        init_newValues(context);
+        init_canonical(allocator);
+        init_scaleFactor(allocator);
+        init_matrix(allocator);
+        init_newValues(allocator);
     }
 
     // values and position must already be device pointers

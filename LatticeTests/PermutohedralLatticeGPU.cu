@@ -1,11 +1,14 @@
 #include "cuda_runtime.h"
 #include "../PermutohedralLatticeGPU.cuh"
+#include "../DeviceMemoryAllocator.h"
 
 //input and positions should be device pointers by this point
 void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n) {
+
+    auto allocator = DeviceMemoryAllocator();
     //vd = image_channels + 1
     if(pd == 5 && vd == 4){
-        auto lattice = PermutohedralLatticeGPU<float, 5, 4>(n);
+        auto lattice = PermutohedralLatticeGPU<float, 5, 4>(n, &allocator);
         lattice.filter(output, input, positions, false);
     }
     else
@@ -41,9 +44,10 @@ void compute_spatial_kernel_gpu(float * positions,
 //same stuff for double
 
 void lattice_filter_gpu(double * output, const double *input, const double *positions, int pd, int vd, int n) {
+    auto allocator = DeviceMemoryAllocator();
     //vd = image_channels + 1
     if(pd == 5 && vd == 4){
-        auto lattice = PermutohedralLatticeGPU<double, 5, 4>(n);
+        auto lattice = PermutohedralLatticeGPU<double, 5, 4>(n, &allocator);
         lattice.filter(output, input, positions, false);
     }
     else

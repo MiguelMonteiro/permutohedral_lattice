@@ -1,3 +1,4 @@
+#define GOOGLE_CUDA
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
 #include "LatticeFilterKernel.h"
@@ -5,7 +6,7 @@
 #include "tensorflow/core/framework/op_kernel.h"
 //#include "tensorflow/core/util/cuda_kernel_helper.h"
 #include "PermutohedralLatticeGPU.cuh"
-
+#include "DeviceMemoryAllocator.h"
 
 #ifndef SPATIAL_DIMS
 #define SPATIAL_DIMS 2
@@ -22,14 +23,6 @@ using namespace tensorflow;
 
 using GPUDevice = Eigen::GpuDevice;
 
-class OpNotImplemented: public std::exception
-{
-    virtual const char* what() const throw()
-    {
-        return "The op was not compiled for the number of input and reference channels used, "
-                "recompile op with correct values of pd and vd";
-    }
-} OpNotImplemented;
 
 template<typename T>
 void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
@@ -43,8 +36,10 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
                                              T spatial_std,
                                              T features_std){
 
+    auto allocator = DeviceMemoryAllocator(context);
+
     int* spatial_dims_gpu;
-    cudaMalloc((void**)&(spatial_dims_gpu), n_spatial_dims*sizeof(int));
+    allocator.allocate_device_memory<int>((void**)&spatial_dims_gpu, n_spatial_dims);
     cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
@@ -53,7 +48,6 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
     compute_kernel<T><<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
             num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims_gpu, spatial_std, features_std);
 
-    cudaFree(spatial_dims_gpu);
 };
 
 //declaration of what lattices (pd and vd) can be used
@@ -71,15 +65,16 @@ void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
                                              int vd,
                                              bool reverse) {
 
+    auto allocator = DeviceMemoryAllocator(context);
     //bilateral
     if(pd == SPATIAL_DIMS + REFERENCE_CHANNELS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, 5, 4>(num_super_pixels, context, d.stream());
+        auto lattice = PermutohedralLatticeGPU<T, 5, 4>(num_super_pixels, &allocator, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }
     //spatial only
     if(pd == SPATIAL_DIMS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, 2, 4>(num_super_pixels, context, d.stream());
+        auto lattice = PermutohedralLatticeGPU<T, 2, 4>(num_super_pixels, &allocator, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }
