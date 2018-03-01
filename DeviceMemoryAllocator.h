@@ -57,19 +57,19 @@ class DeviceMemoryAllocator {
     void** ptr_addresses[10];
     int filled;
 
+public:
+
+    DeviceMemoryAllocator(): filled(0){}
+
     ~DeviceMemoryAllocator(){
         for(int i=0; i < filled; i++)
             cudaFree(*ptr_addresses[i]);
     }
 
-public:
-
-    DeviceMemoryAllocator(): filled(0){}
-
     template<typename t>
     void allocate_device_memory(void ** ptr_address, int num_elements){
         cudaMalloc(ptr_address, num_elements*sizeof(t));
-        ptr_address[filled] = ptr_address;
+        ptr_addresses[filled] = ptr_address;
         filled++;
     }
 

@@ -4,7 +4,7 @@
 #define BLOCK_SIZE 256
 
 #include <cstdio>
-
+#include <utility>
 #include "cuda_code_indexing.h"
 #include "cuda_runtime.h"
 #include "DeviceMemoryAllocator.h"
@@ -440,7 +440,7 @@ public:
                 hostCanonical[i * (pd + 1) + j] = i - (pd + 1);
         }
         allocator->allocate_device_memory<int>((void**)&canonical,  (pd + 1) * (pd + 1));
-        cudaMemcpy(canonical, hostCanonical,  (pd + 1) * (pd + 1) * sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(canonical, hostCanonical, (pd + 1) * (pd + 1) * sizeof(int), cudaMemcpyHostToDevice);
     }
 
 
