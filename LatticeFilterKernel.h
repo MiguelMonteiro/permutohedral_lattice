@@ -4,12 +4,13 @@
 
 #ifndef PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H
 #define PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H
-
 #include "tensorflow/core/framework/op_kernel.h"
+using namespace tensorflow;
 
 template<typename Device, typename T>
 struct LatticeFilter {
     void operator()(const Device &d,
+                    OpKernelContext* context,
                     T *output,
                     const T *input,
                     const T * positions,
@@ -23,6 +24,7 @@ struct LatticeFilter {
 template<typename Device, typename T>
 struct ComputeKernel {
     void operator()(const Device &d,
+                    OpKernelContext* context,
                     const T *reference_image,
                     T * positions,
                     int num_super_pixels,
@@ -41,6 +43,7 @@ struct ComputeKernel {
 template<typename T>
 struct LatticeFilter<Eigen::GpuDevice, T> {
     void operator()(const Eigen::GpuDevice &d,
+                    OpKernelContext* context,
                     T *output,
                     const T *input,
                     const T * positions,
@@ -53,6 +56,7 @@ struct LatticeFilter<Eigen::GpuDevice, T> {
 template<typename  T>
 struct ComputeKernel<Eigen::GpuDevice, T> {
     void operator()(const Eigen::GpuDevice &d,
+                    OpKernelContext* context,
                     const T * reference_image,
                     T * positions,
                     int num_super_pixels,

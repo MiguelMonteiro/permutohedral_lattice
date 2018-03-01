@@ -33,6 +33,7 @@ class OpNotImplemented: public std::exception
 
 template<typename T>
 void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
+                                             OpKernelContext* context,
                                              const T *reference_image,
                                              T * positions,
                                              int num_super_pixels,
@@ -61,6 +62,7 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
 // Define the GPU implementation that launches the CUDA kernel.
 template <typename T>
 void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
+                                             OpKernelContext* context,
                                              T* output,
                                              const T *input,
                                              const T *positions,
@@ -71,13 +73,13 @@ void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
 
     //bilateral
     if(pd == SPATIAL_DIMS + REFERENCE_CHANNELS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, 5, 4>(num_super_pixels, d.stream());
+        auto lattice = PermutohedralLatticeGPU<T, 5, 4>(num_super_pixels, context, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }
     //spatial only
     if(pd == SPATIAL_DIMS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, 2, 4>(num_super_pixels, d.stream());
+        auto lattice = PermutohedralLatticeGPU<T, 2, 4>(num_super_pixels, context, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }

@@ -35,6 +35,7 @@ using GPUDevice = Eigen::GpuDevice;
 template<typename T>
 struct ComputeKernel<CPUDevice, T>{
     void operator()(const CPUDevice& d,
+                    OpKernelContext* context,
                     const T *reference_image,
                     T * positions,
                     int num_super_pixels,
@@ -51,13 +52,14 @@ struct ComputeKernel<CPUDevice, T>{
 template <typename T>
 struct LatticeFilter<CPUDevice, T>{
     void operator()(const CPUDevice& d,
-               T* output,
-               const T *input,
-               const T *positions,
-               int num_super_pixels,
-               int pd,
-               int vd,
-               bool reverse){
+                    OpKernelContext* context,
+                    T* output,
+                    const T *input,
+                    const T *positions,
+                    int num_super_pixels,
+                    int pd,
+                    int vd,
+                    bool reverse){
         auto lattice = PermutohedralLatticeCPU<T>(pd, vd, num_super_pixels);
         lattice.filter(output, input, positions, reverse);
     }
@@ -142,6 +144,7 @@ public:
             auto out_ptr = &(output_tensor->flat<T>().data()[b * num_super_pixels * n_input_channels]);
 
             ComputeKernel<Device, T>()(context->eigen_device<Device>(),
+                                       context,
                                        ref_ptr,
                                        pos_ptr,
                                        num_super_pixels,
@@ -152,6 +155,7 @@ public:
                                        features_std);
 
             LatticeFilter<Device, T>()(context->eigen_device<Device>(),
+                                       context,
                                        out_ptr,
                                        in_ptr,
                                        pos_ptr,

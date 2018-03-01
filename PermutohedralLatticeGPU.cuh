@@ -30,26 +30,26 @@ __device__ double atomicAdd(double* address, double val)
 
 #endif
 
-template<typename t> void allocate_device_memory(OpKernelConstruction* context,
+
+template<typename t>
+void allocate_device_memory_as_bytes(OpKernelContext* context,
+                                     void ** ptr_address,
+                                     Tensor *tensor_ptr,
+                                     int num_elements){
+    DataType dataType = DT_UINT8;
+    num_elements *= sizeof(t);
+    OP_REQUIRES_OK(context, context->allocate_temp(dataType, TensorShape({num_elements}), tensor_ptr));
+    *ptr_address = reinterpret_cast<t*>((*tensor_ptr).flat<unsigned char>().data());
+}
+
+template<typename t>
+void allocate_device_memory(OpKernelContext* context,
                                                  void ** ptr_address,
                                                  Tensor *tensor_ptr,
-                                                 int num_elements,
-                                                 bool alloc_as_bytes=false){
-    DataType dataType;
-    if(alloc_as_bytes){
-        dataType = DT_UINT8;
-        num_elements *= sizeof(t);
-    }else{
-        dataType = DataTypeToEnum<t>::v();
-    }
-
+                                                 int num_elements){
+    DataType dataType = DataTypeToEnum<t>::v();
     OP_REQUIRES_OK(context, context->allocate_temp(dataType, TensorShape({num_elements}), tensor_ptr));
-
-    if(alloc_as_bytes){
-        *ptr_address = reinterpret_cast<t*>((*tensor_ptr).flat<unsigned char>().data());
-    }else{
-        *ptr_address = (*tensor_ptr).flat<t>().data();
-    }
+    *ptr_address = (*tensor_ptr).flat<t>().data();
 }
 
 
@@ -67,7 +67,7 @@ public:
     Tensor t_entries;
 
 
-    HashTableGPU(int capacity_, OpKernelConstruction* context): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
+    HashTableGPU(int capacity_, OpKernelContext* context): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr), original(true){
 
         //cudaMalloc((void**)&values, capacity*vd*sizeof(T));
         allocate_device_memory<T>(context, (void**)&values, &t_values, capacity * vd);
@@ -468,7 +468,7 @@ public:
     Tensor t_matrix;
     Tensor t_newValues;
 
-    void init_canonical(OpKernelConstruction* context){
+    void init_canonical(OpKernelContext* context){
         int hostCanonical[(pd + 1) * (pd + 1)];
         //auto canonical = new int[(pd + 1) * (pd + 1)];
         // compute the coordinates of the canonical simplex, in which
@@ -487,7 +487,7 @@ public:
     }
 
 
-    void init_scaleFactor(OpKernelConstruction* context){
+    void init_scaleFactor(OpKernelContext* context){
         T hostScaleFactor[pd];
         T invStdDev = (pd + 1) * sqrt(2.0f / 3);
         for (int i = 0; i < pd; i++) {
@@ -499,19 +499,19 @@ public:
         cudaMemcpy(scaleFactor, hostScaleFactor, pd * sizeof(T), cudaMemcpyHostToDevice);
     }
 
-    void init_matrix(OpKernelConstruction* context){
-        allocate_device_memory<MatrixEntry<T>>(context, (void**)&matrix, &t_matrix, n * (pd + 1), true);
+    void init_matrix(OpKernelContext* context){
+        allocate_device_memory_as_bytes<MatrixEntry<T>>(context, (void**)&matrix, &t_matrix, n * (pd + 1));
         //cudaMalloc((void**)&(matrix), n * (pd + 1) * sizeof(MatrixEntry<T>));
     }
 
-    void init_newValues(OpKernelConstruction* context){
+    void init_newValues(OpKernelContext* context){
         //cudaMalloc((void **) &(newValues), n * (pd + 1) * vd * sizeof(T));
         allocate_device_memory<T>(context, (void**)&newValues, &t_newValues, n * (pd + 1) * vd);
         cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(T));
     }
 
 
-    PermutohedralLatticeGPU(int n_, OpKernelConstruction* context, cudaStream_t stream_=0):
+    PermutohedralLatticeGPU(int n_, OpKernelContext* context, cudaStream_t stream_=0):
             n(n_),
             canonical(nullptr),
             scaleFactor(nullptr),

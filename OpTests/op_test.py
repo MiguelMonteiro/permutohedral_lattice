@@ -11,7 +11,7 @@ theta_alpha = 20.0
 theta_beta = 0.125
 
 shape=[1200, 800, 3]
-im = Image.open("../Images/input.bmp")
+im = Image.open("Images/input.bmp")
 
 tf_input_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
 tf_reference_image = tf.constant(np.array(im)/255.0, dtype=tf.float32)
