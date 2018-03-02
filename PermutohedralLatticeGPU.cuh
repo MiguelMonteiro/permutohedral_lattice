@@ -125,7 +125,6 @@ template<typename T, int pd, int vd>
 __global__ static void createLattice(const int n,
                                      const T *positions,
                                      const T *scaleFactor,
-                                     const int * canonical,
                                      MatrixEntry<T> *matrix,
                                      HashTableGPU<T, pd, vd> table) {
 
@@ -133,13 +132,14 @@ __global__ static void createLattice(const int n,
     if (idx >= n)
         return;
 
-
     T elevated[pd + 1];
     const T *position = positions + idx * pd;
     int rem0[pd + 1];
     int rank[pd + 1];
 
-
+    // embed position vector into the hyperplane
+    // first rotate position into the (pd+1)-dimensional hyperplane
+    // sm contains the sum of 1..n of our feature vector
     T sm = 0;
     for (int i = pd; i > 0; i--) {
         T cf = position[i - 1] * scaleFactor[i - 1];
@@ -153,7 +153,7 @@ __global__ static void createLattice(const int n,
     // greedily search for the closest zero-colored lattice point
     short sum = 0;
     for (int i = 0; i <= pd; i++) {
-        T v = elevated[i] * (1.0f / (pd + 1));
+        T v = elevated[i] * (1.0 / (pd + 1));
         T up = ceil(v) * (pd + 1);
         T down = floor(v) * (pd + 1);
         if (up - elevated[i] < elevated[i] - down) {
@@ -165,7 +165,7 @@ __global__ static void createLattice(const int n,
     }
     sum /= pd + 1;
 
-    /*
+
     // Find the simplex we are in and store it in rank (where rank describes what position coordinate i has in the sorted order of the features values)
     for (int i = 0; i <= pd; i++)
         rank[i] = 0;
@@ -189,57 +189,23 @@ __global__ static void createLattice(const int n,
             rem0[i] -= pd + 1;
         }
     }
-    */
 
-    // sort differential to find the permutation between this simplex and the canonical one
-    for (int i = 0; i <= pd; i++) {
-        rank[i] = 0;
-        for (int j = 0; j <= pd; j++) {
-            if (elevated[i] - rem0[i] < elevated[j] - rem0[j] || (elevated[i] - rem0[i] == elevated[j] - rem0[j] && i > j)) {
-                rank[i]++;
-            }
-        }
-    }
-
-    if (sum > 0) { // sum too large, need to bring down the ones with the smallest differential
-        for (int i = 0; i <= pd; i++) {
-            if (rank[i] >= pd + 1 - sum) {
-                rem0[i] -= pd + 1;
-                rank[i] += sum - (pd + 1);
-            } else {
-                rank[i] += sum;
-            }
-        }
-    } else if (sum < 0) { // sum too small, need to bring up the ones with largest differential
-        for (int i = 0; i <= pd; i++) {
-            if (rank[i] < -sum) {
-                rem0[i] += pd + 1;
-                rank[i] += (pd + 1) + sum;
-            } else {
-                rank[i] += sum;
-            }
-        }
-    }
 
     T barycentric[pd + 2]{0};
-
-    // turn delta into barycentric coords
-
+    // Compute the barycentric coordinates (p.10 in [Adams etal 2010])
     for (int i = 0; i <= pd; i++) {
-        T delta = (elevated[i] - rem0[i]) * (1.0f / (pd + 1));
+        T delta = (elevated[i] - rem0[i]) * (1.0 / (pd + 1));
         barycentric[pd - rank[i]] += delta;
         barycentric[pd + 1 - rank[i]] -= delta;
     }
-    barycentric[0] += 1.0f + barycentric[pd + 1];
+    // Wrap around
+    barycentric[0] += 1.0 + barycentric[pd + 1];
 
 
     short key[pd];
     for (int remainder = 0; remainder <= pd; remainder++) {
         // Compute the location of the lattice point explicitly (all but
         // the last coordinate - it's redundant because they sum to zero)
-
-        /*for (int i = 0; i < pd; i++)
-            key[i] = static_cast<short>(rem0[i] + canonical[remainder * (pd + 1) + rank[i]]);*/
         for (int i = 0; i < pd; i++) {
             key[i] = static_cast<short>(rem0[i] + remainder);
             if (rank[i] > pd - remainder)
@@ -413,29 +379,11 @@ __global__ static void slice(const int n, T *values, MatrixEntry<T> *matrix, Has
 template<typename T, int pd, int vd>class PermutohedralLatticeGPU{
 public:
     int n; //number of pixels/voxels etc..
-    int * canonical;
     T * scaleFactor;
     MatrixEntry<T>* matrix;
     HashTableGPU<T, pd, vd> hashTable;
     cudaStream_t stream;
     T * newValues; // auxiliary array for blur stage
-
-    void init_canonical(DeviceMemoryAllocator* allocator){
-        int hostCanonical[(pd + 1) * (pd + 1)];
-        //auto canonical = new int[(pd + 1) * (pd + 1)];
-        // compute the coordinates of the canonical simplex, in which
-        // the difference between a contained point and the zero
-        // remainder vertex is always in ascending order. (See pg.4 of paper.)
-        for (int i = 0; i <= pd; i++) {
-            for (int j = 0; j <= pd - i; j++)
-                hostCanonical[i * (pd + 1) + j] = i;
-            for (int j = pd - i + 1; j <= pd; j++)
-                hostCanonical[i * (pd + 1) + j] = i - (pd + 1);
-        }
-        int n_elements = (pd + 1) * (pd + 1);
-        allocator->allocate_device_memory<int>((void**)&canonical, n_elements);
-        allocator->memcpy<int>((void*)canonical, (void*)hostCanonical, n_elements);
-    }
 
     void init_scaleFactor(DeviceMemoryAllocator* allocator){
         T hostScaleFactor[pd];
@@ -458,7 +406,6 @@ public:
 
     PermutohedralLatticeGPU(int n_, DeviceMemoryAllocator* allocator, cudaStream_t stream_=0):
             n(n_),
-            canonical(nullptr),
             scaleFactor(nullptr),
             matrix(nullptr),
             newValues(nullptr),
@@ -471,7 +418,6 @@ public:
         }
 
         // initialize device memory
-        init_canonical(allocator);
         init_scaleFactor(allocator);
         init_matrix(allocator);
         init_newValues(allocator);
@@ -485,7 +431,7 @@ public:
         int cleanBlockSize = 32;
         dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
 
-        createLattice<T, pd, vd> <<<blocks, blockSize, 0, stream>>>(n, positions, scaleFactor, canonical, matrix, hashTable);
+        createLattice<T, pd, vd> <<<blocks, blockSize, 0, stream>>>(n, positions, scaleFactor, matrix, hashTable);
         printf("Create Lattice: %s\n", cudaGetErrorString(cudaGetLastError()));
 
         cleanHashTable<T, pd, vd> <<<cleanBlocks, cleanBlockSize, 0, stream>>>(2 * n * (pd + 1), hashTable);

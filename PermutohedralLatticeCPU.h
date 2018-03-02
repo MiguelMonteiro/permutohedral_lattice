@@ -157,12 +157,9 @@ public:
 };
 
 
-
-
 template<typename T> class PermutohedralLatticeCPU {
 
     int pd, vd, N;
-    std::unique_ptr<int[]> canonical;
     std::unique_ptr<T[]> scaleFactor;
     HashTableCPU<T> hashTable;
     std::unique_ptr<T[]> elevated;
@@ -177,26 +174,8 @@ template<typename T> class PermutohedralLatticeCPU {
         T weight;
     };
     std::unique_ptr<ReplayEntry[]> replay;
-    int nReplay;
+    int idx;
 
-
-    std::unique_ptr<int[]> compute_canonical_simplex() {
-        auto canonical = std::unique_ptr<int[]>(new int[(pd + 1) * (pd + 1)]);
-        //auto canonical = new int[(pd + 1) * (pd + 1)];
-        // compute the coordinates of the canonical simplex, in which
-        // the difference between a contained point and the zero
-        // remainder vertex is always in ascending order. (See pg.4 of paper.)
-        for (int i = 0; i <= pd; i++) {
-            for (int j = 0; j <= pd - i; j++)
-                canonical[i * (pd + 1) + j] = i;
-            for (int j = pd - i + 1; j <= pd; j++)
-                canonical[i * (pd + 1) + j] = i - (pd + 1);
-        }
-        return canonical;
-    }
-
-
-    //this needs work with the floats
     std::unique_ptr<T[]> compute_scale_factor() {
         auto scaleFactor = std::unique_ptr<T[]>(new T[pd]);
 
@@ -224,6 +203,7 @@ template<typename T> class PermutohedralLatticeCPU {
 
 
     void embed_position_vector(const T *position) {
+        // embed position vector into the hyperplane
         // first rotate position into the (pd+1)-dimensional hyperplane
         // sm contains the sum of 1..n of our feature vector
         T sm = 0;
@@ -235,19 +215,18 @@ template<typename T> class PermutohedralLatticeCPU {
         elevated[0] = sm;
     }
 
-    //this also needs work the floats
     void find_enclosing_simplex(){
         // Find the closest 0-colored simplex through rounding
         // greedily search for the closest zero-colored lattice point
-        signed short sum = 0;
+        short sum = 0;
         for (int i = 0; i <= pd; i++) {
             T v = elevated[i] * (1.0 / (pd + 1));
             T up = ceil(v) * (pd + 1);
             T down = floor(v) * (pd + 1);
             if (up - elevated[i] < elevated[i] - down) {
-                rem0[i] = (signed short) up;
+                rem0[i] = (short) up;
             } else {
-                rem0[i] = (signed short) down;
+                rem0[i] = (short) down;
             }
             sum += rem0[i];
         }
@@ -278,22 +257,18 @@ template<typename T> class PermutohedralLatticeCPU {
         }
     }
 
-
     void compute_barycentric_coordinates() {
-        T down_factor = 1.0 / (pd + 1);
         for(int i = 0; i < pd + 2; i++)
             barycentric[i]=0;
-        //memset(barycentric, 0, sizeof(float) * (pd + 2));
         // Compute the barycentric coordinates (p.10 in [Adams etal 2010])
         for (int i = 0; i <= pd; i++) {
-            T v = (elevated[i] - rem0[i]) * down_factor;
-            barycentric[pd - rank[i]] += v;
-            barycentric[pd - rank[i] + 1] -= v;
+            T delta = (elevated[i] - rem0[i]) *  (1.0 / (pd + 1));
+            barycentric[pd - rank[i]] += delta;
+            barycentric[pd - rank[i] + 1] -= delta;
         }
         // Wrap around
         barycentric[0] += 1.0 + barycentric[pd + 1];
     }
-
 
     void splat_point(const T *position, const T * value) {
 
@@ -303,17 +278,18 @@ template<typename T> class PermutohedralLatticeCPU {
 
         compute_barycentric_coordinates();
 
-        //here key seems to be 1 too long
-        auto key = new short[pd + 1];
-        // Splat the value into each vertex of the simplex, with barycentric weights.
+        auto key = new short[pd];
         for (int remainder = 0; remainder <= pd; remainder++) {
-            // Compute the location of the lattice point explicitly (all but the last coordinate - it's redundant because they sum to zero)
-            for (int i = 0; i < pd; i++)
-                key[i] = static_cast<short>(rem0[i] + canonical[remainder * (pd + 1) + rank[i]]);
+            // Compute the location of the lattice point explicitly (all but
+            // the last coordinate - it's redundant because they sum to zero)
+            for (int i = 0; i < pd; i++) {
+                key[i] = static_cast<short>(rem0[i] + remainder);
+                if (rank[i] > pd - remainder)
+                    key[i] -= (pd + 1);
+            }
 
             // Retrieve pointer to the value at this vertex.
             T *val = hashTable.lookup(key, true);
-
             // Accumulate values with barycentric weight.
             for (int i = 0; i < vd - 1; i++)
                 val[i] += barycentric[remainder] * value[i];
@@ -321,23 +297,12 @@ template<typename T> class PermutohedralLatticeCPU {
             val[vd - 1] += barycentric[remainder]; //homogeneous coordinate (as if value[vd-1]=1)
 
             // Record this interaction to use later when slicing
-            replay[nReplay].offset = val - hashTable.getValues();
-            replay[nReplay].weight = barycentric[remainder];
-            nReplay++;
+            replay[idx].offset = val - hashTable.getValues();
+            replay[idx].weight = barycentric[remainder];
+            idx++;
         }
 
         delete[] key;
-
-/*    // Compute all vertices and their offset
-    for( int remainder=0; remainder<=pd; remainder++ ){
-        for( int i=0; i<pd; i++ )
-            key[i] = rem0[i] + canonical[ remainder*(pd+1) + rank[i] ];
-        offset_[ k*(d_+1)+remainder ] = hash_table.find( key, true );
-        rank_[ k*(d_+1)+remainder ] = rank[remainder];
-        barycentric_[ k*(d_+1)+remainder ] = barycentric[ remainder ];
-    }*/
-
-
     }
 
 
@@ -357,7 +322,7 @@ template<typename T> class PermutohedralLatticeCPU {
         for (int j = 0; j < vd; j++)
             col[j] = 0;
         for (int i = 0; i <= pd; i++) {
-            ReplayEntry r = replay[nReplay++];
+            ReplayEntry r = replay[idx++];
             for (int j = 0; j < vd; j++) {
                 col[j] += r.weight * base[r.offset + j];
             }
@@ -366,7 +331,7 @@ template<typename T> class PermutohedralLatticeCPU {
 
     void slice(T * out){
 
-        nReplay = 0;
+        idx = 0;
 
         int im_channels = vd - 1;
 
@@ -375,8 +340,8 @@ template<typename T> class PermutohedralLatticeCPU {
             T *base = hashTable.getValues();
             auto col = new T[vd]{0};
             for (int i = 0; i <= pd; i++) {
-                ReplayEntry r = replay[nReplay];
-                nReplay++;
+                ReplayEntry r = replay[idx];
+                idx++;
                 for (int j = 0; j < vd; j++) {
                     col[j] += r.weight * base[r.offset + j];
                 }
@@ -474,10 +439,9 @@ public:
         // Allocate storage for various arrays
         replay = std::unique_ptr<ReplayEntry[]>(new ReplayEntry[N * (pd + 1)]);
         //replay = new ReplayEntry[N * (pd + 1)];
-        nReplay = 0;
+        idx = 0;
 
         //lattice properties
-        canonical = compute_canonical_simplex();
         scaleFactor = compute_scale_factor();
 
         //arrays that are used in splatting, they are overwritten for each point but we only allocate once for speed
@@ -503,13 +467,13 @@ public:
 
 template <typename T>
 static void compute_kernel_cpu(const T * reference,
-                                         T * positions,
-                                         int num_super_pixels,
-                                         int reference_channels,
-                                         int n_sdims,
-                                         const int *sdims,
-                                         T spatial_std,
-                                         T feature_std){
+                               T * positions,
+                               int num_super_pixels,
+                               int reference_channels,
+                               int n_sdims,
+                               const int *sdims,
+                               T spatial_std,
+                               T feature_std){
 
     int num_dims = n_sdims + reference_channels;
 
