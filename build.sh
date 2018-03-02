@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
+rm lattice_filter.so
+rm libcuda_lattice_filter.so
+
 mkdir build_dir
 cd build_dir
 rm -r *
+
 
 CUDA_COMPILER=/usr/local/cuda/bin/nvcc
 CXX_COMPILER=/usr/bin/g++-4.8
