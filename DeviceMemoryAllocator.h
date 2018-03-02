@@ -37,8 +37,12 @@ public:
         *ptr_address = reinterpret_cast<t*>((*tensor_ptr).flat<unsigned char>().data());
     }
 
-    template<typename t> void fill(void * ptr, t value, int num_elements){
+    template<typename t> void memset(void * ptr, t value, int num_elements){
         cudaMemset(ptr, value, num_elements * sizeof(t));
+    }
+
+    template<typename t> void memcpy(void * device_ptr, void * host_ptr, int num_elements){
+        cudaMemcpy(device_ptr, host_ptr, num_elements * sizeof(t), cudaMemcpyHostToDevice);
     }
 
     /*template<typename t>
@@ -73,8 +77,12 @@ public:
         filled++;
     }
 
-    template<typename t> void fill(void * ptr, t value, int num_elements){
+    template<typename t> void memset(void * ptr, t value, int num_elements){
         cudaMemset(ptr, value, num_elements * sizeof(t));
+    }
+
+    template<typename t> void memcpy(void * device_ptr, void * host_ptr, int num_elements){
+        cudaMemcpy(device_ptr, host_ptr, num_elements * sizeof(t), cudaMemcpyHostToDevice);
     }
 
 

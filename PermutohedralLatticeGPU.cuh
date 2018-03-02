@@ -38,14 +38,13 @@ public:
     HashTableGPU(int capacity_, DeviceMemoryAllocator* allocator): capacity(capacity_), values(nullptr), keys(nullptr), entries(nullptr){
 
         allocator->allocate_device_memory<T>((void**)&values, capacity * vd);
-        cudaMemset((void *)values, 0, capacity*vd*sizeof(T));
-
+        allocator->memset<T>((void*)values, 0, capacity * vd);
 
         allocator->allocate_device_memory<int>((void**)&entries, capacity * 2);
-        cudaMemset((void *)entries, -1, capacity*2*sizeof(int));
+        allocator->memset<int>((void*)entries, -1, capacity * 2);
 
         allocator->allocate_device_memory<short>((void**)&keys, capacity * pd);
-        cudaMemset((void *)keys, 0, capacity*pd*sizeof(short));
+        allocator->memset<short>((void*)keys, 0, capacity * pd);
     }
 
     __device__ int modHash(unsigned int n){
@@ -439,8 +438,9 @@ public:
             for (int j = pd - i + 1; j <= pd; j++)
                 hostCanonical[i * (pd + 1) + j] = i - (pd + 1);
         }
-        allocator->allocate_device_memory<int>((void**)&canonical,  (pd + 1) * (pd + 1));
-        cudaMemcpy(canonical, hostCanonical, (pd + 1) * (pd + 1) * sizeof(int), cudaMemcpyHostToDevice);
+        int n_elements = (pd + 1) * (pd + 1);
+        allocator->allocate_device_memory<int>((void**)&canonical, n_elements);
+        allocator->memcpy<int>((void*)canonical, (void*)hostCanonical, n_elements);
     }
 
 
@@ -451,7 +451,7 @@ public:
             hostScaleFactor[i] = 1.0f / (sqrt((T) (i + 1) * (i + 2))) * invStdDev;
         }
         allocator->allocate_device_memory<T>((void**)&scaleFactor, pd);
-        cudaMemcpy(scaleFactor, hostScaleFactor, pd * sizeof(T), cudaMemcpyHostToDevice);
+        allocator->memcpy<T>((void*)scaleFactor, (void*)hostScaleFactor, pd);
     }
 
     void init_matrix(DeviceMemoryAllocator* allocator){
@@ -460,7 +460,7 @@ public:
 
     void init_newValues(DeviceMemoryAllocator* allocator){
         allocator->allocate_device_memory<T>((void**)&newValues,  n * (pd + 1) * vd);
-        cudaMemset((void *) newValues, 0, n * (pd + 1) * vd * sizeof(T));
+        allocator->memset<T>((void *)newValues, 0, n * (pd + 1) * vd);
     }
 
 
