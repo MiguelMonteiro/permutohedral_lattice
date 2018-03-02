@@ -17,7 +17,7 @@
  */
 /***************************************************************/
 template <typename T>class HashTableCPU {
-
+public:
     short *keys;
     T *values;
     int *entries;
@@ -151,9 +151,7 @@ public:
             return nullptr;
         else
             return values + offset;
-    };
-
-
+    }
 };
 
 
@@ -191,12 +189,12 @@ template<typename T> class PermutohedralLatticeCPU {
          *
          * So we need to scale the space by (pd+1)sqrt(2/3).
          */
-        T inv_std_dev = (pd + 1) * sqrt(2.0 / 3);
+        T invStdDev = (pd + 1) * sqrt(2.0 / 3);
 
         // Compute parts of the rotation matrix E. (See pg.4-5 of paper.)
         for (int i = 0; i < pd; i++) {
             // the diagonal entries for normalization
-            scaleFactor[i] = 1.0 / (sqrt((i + 1) * (i + 2))) * inv_std_dev;
+            scaleFactor[i] = 1.0 / (sqrt((i + 1) * (i + 2))) * invStdDev;
         }
         return scaleFactor;
     }
@@ -301,7 +299,6 @@ template<typename T> class PermutohedralLatticeCPU {
             replay[idx].weight = barycentric[remainder];
             idx++;
         }
-
         delete[] key;
     }
 
@@ -366,20 +363,19 @@ template<typename T> class PermutohedralLatticeCPU {
         auto n2_key = new short[pd + 1];
 
         //old and new values contain the lattice points before and after blur
-        auto new_values = new T[vd * hashTable.size()];
-        T *old_values = hashTable.getValues();
-        T *hashTableBase = old_values;
+        //auto new_values = new T[vd * hashTable.size()];
+        auto new_values = new T[vd * hashTable.capacity];
 
         auto zero = new T[vd]{0};
         //for (int k = 0; k < vd; k++)
         //    zero[k] = 0;
 
         // For each of pd+1 axes,
-
         for (int remainder=reverse?pd:0; remainder >= 0 && remainder <= pd; reverse?remainder--:remainder++){
             // For each vertex in the lattice,
             for (int i = 0; i < hashTable.size(); i++) { // blur point i in dimension j
-                short *key = hashTable.getKeys() + i * (pd); // keys to current vertex
+
+                short *key = hashTable.getKeys() + i * pd; // keys to current vertex
                 for (int k = 0; k < pd; k++) {
                     n1_key[k] = key[k] + 1;
                     n2_key[k] = key[k] - 1;
@@ -388,45 +384,28 @@ template<typename T> class PermutohedralLatticeCPU {
                 n1_key[remainder] = key[remainder] - pd;
                 n2_key[remainder] = key[remainder] + pd; // keys to the neighbors along the given axis.
 
-                T *oldVal = old_values + i * vd;
+                T *oldVal = hashTable.values + i * vd;
                 T *newVal = new_values + i * vd;
 
                 T *n1_value, *n2_value;
 
                 n1_value = hashTable.lookup(n1_key, false); // look up first neighbor
-                if (n1_value)
-                    n1_value = n1_value - hashTableBase + old_values;
-                else
+                if (n1_value == nullptr)
                     n1_value = zero;
 
                 n2_value = hashTable.lookup(n2_key, false); // look up second neighbor
-                if (n2_value)
-                    n2_value = n2_value - hashTableBase + old_values;
-                else
+                if (n2_value == nullptr)
                     n2_value = zero;
 
                 // Mix values of the three vertices
                 for (int k = 0; k < vd; k++)
                     newVal[k] = (0.25 * n1_value[k] + 0.5 * oldVal[k] + 0.25 * n2_value[k]);
             }
-            std::swap(old_values, new_values);
             // the freshest data is now in old_values, and new_values is ready to be written over
+            std::swap(hashTable.values, new_values);
         }
 
-        if(old_values != hashTableBase){
-            std::swap(old_values, new_values);
-        }
         delete[](new_values);
-        /*
-        // depending where we ended up, we may have to copy data
-        if (old_values != hashTableBase) {
-            memcpy(hashTableBase, old_values, hashTable.size() * vd * sizeof(T));
-            delete[] old_values;
-        } else {
-            delete[] new_values;
-        }
-        printf("\n");*/
-
         delete[] zero;
         delete[] n1_key;
         delete[] n2_key;
