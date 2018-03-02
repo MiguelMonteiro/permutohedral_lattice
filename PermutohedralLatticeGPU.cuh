@@ -24,7 +24,6 @@ __device__ double atomicAdd(double* address, double val)
     } while (assumed != old);
     return __longlong_as_double(old);
 }
-
 #endif
 
 
@@ -116,8 +115,6 @@ public:
         }
     }
 };
-
-
 
 template<typename T> struct MatrixEntry {
     int index;
@@ -411,9 +408,7 @@ __global__ static void slice(const int n, T *values, MatrixEntry<T> *matrix, Has
     weight = 1.0f / weight;
     for (int j = 0; j < vd - 1; j++)
         values[idx * (vd - 1) + j] = value[j] * weight;
-
 }
-
 
 template<typename T, int pd, int vd>class PermutohedralLatticeGPU{
 public:
@@ -424,7 +419,6 @@ public:
     HashTableGPU<T, pd, vd> hashTable;
     cudaStream_t stream;
     T * newValues; // auxiliary array for blur stage
-
 
     void init_canonical(DeviceMemoryAllocator* allocator){
         int hostCanonical[(pd + 1) * (pd + 1)];
@@ -442,7 +436,6 @@ public:
         allocator->allocate_device_memory<int>((void**)&canonical, n_elements);
         allocator->memcpy<int>((void*)canonical, (void*)hostCanonical, n_elements);
     }
-
 
     void init_scaleFactor(DeviceMemoryAllocator* allocator){
         T hostScaleFactor[pd];
@@ -462,7 +455,6 @@ public:
         allocator->allocate_device_memory<T>((void**)&newValues,  n * (pd + 1) * vd);
         allocator->memset<T>((void *)newValues, 0, n * (pd + 1) * vd);
     }
-
 
     PermutohedralLatticeGPU(int n_, DeviceMemoryAllocator* allocator, cudaStream_t stream_=0):
             n(n_),
@@ -512,11 +504,7 @@ public:
         slice<T, pd, vd><<<blocks, blockSize, 0, stream>>>(n, output, matrix, hashTable);
         printf("Slice: %s\n", cudaGetErrorString(cudaGetLastError()));
     }
-
 };
-
-
-
 
 template<typename T>
 __global__ static void compute_kernel(const T * reference,
@@ -544,8 +532,4 @@ __global__ static void compute_kernel(const T * reference,
     }
 }
 
-
-
 #endif //PERMUTOHEDRAL_CU
-
-
