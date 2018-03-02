@@ -72,7 +72,7 @@ public:
             }else if (contents == -1) {
                 // If it was empty, we successfully locked it. Write our key.
                 for (int i = 0; i < pd; i++) {
-                    keys[slot*pd+i] = key[i];
+                    keys[slot * pd + i] = key[i];
                 }
                 // Unlock
                 atomicExch(e, slot);
