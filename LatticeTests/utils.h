@@ -8,7 +8,7 @@
 template<typename T> T* get_flat_float_from_image(cimg_library::CImg<unsigned char> image, T pixel_depth=255.0){
 
     //dim0 = y dim1=x
-    auto flat = new T[image.width() * image.height() * 3]{0};
+    auto flat = new T[image.width() * image.height() * 3];
     int idx{0};
     for(int y=0; y < image.height(); ++y){
         for(int x=0; x < image.width(); ++x){
@@ -21,22 +21,6 @@ template<typename T> T* get_flat_float_from_image(cimg_library::CImg<unsigned ch
     return flat;
 }
 
-/*
-float * compute_kernel(cimg_library::CImg<unsigned char> image, float invSpatialStdev, float invColorStdev, float pixel_depth=255.0){
-    auto positions = new float [image.width() * image.height() * 5]{0};
-    int idx{0};
-    for(int y=0; y < image.height(); ++y){
-        for(int x=0; x < image.width(); ++x){
-            positions[idx] = invSpatialStdev * x;
-            positions[idx+1] = invSpatialStdev * y;
-            positions[idx+2] = invColorStdev * image(x, y, 0) / pixel_depth;
-            positions[idx+3] = invColorStdev * image(x, y, 1) / pixel_depth;
-            positions[idx+4] = invColorStdev * image(x, y, 2) / pixel_depth;
-            idx+=5;
-        }
-    }
-    return positions;
-}*/
 
 template <typename T> void save_output(T*out, cimg_library::CImg<unsigned char> image, char*filename, T pixel_depth=255.0){
     int idx{0};

@@ -341,29 +341,6 @@ template<typename T> class PermutohedralLatticeCPU {
         }
     }
 
-    /*void slice(T * out){
-
-        idx = 0;
-
-        for (int n = 0; n < N; n++) {
-            T *base = hashTable.getValues();
-            auto col = new T[vd]{0};
-            for (int i = 0; i <= pd; i++) {
-                MatrixEntry r = matrix[idx];
-                idx++;
-                for (int j = 0; j < vd; j++) {
-                    col[j] += r.weight * base[r.offset + j];
-                }
-            }
-
-            for (int c = 0; c < vd - 1; c++) {
-                *out = col[c] / col[vd - 1];
-                out++;
-            }
-            delete[] col;
-        }
-    }*/
-
 
     /* Performs a Gaussian blur along each projected axis in the hyperplane. */
     void blur(bool reverse) {
