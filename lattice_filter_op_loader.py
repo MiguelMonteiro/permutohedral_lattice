@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
+
 module = tf.load_op_library('permutohedral_lattice/lattice_filter.so')
 
 
