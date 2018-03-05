@@ -26,6 +26,13 @@ __device__ double atomicAdd(double* address, double val)
 }
 #endif
 
+void cudaErrorCheck(){
+    auto code = cudaGetLastError();
+    if(cudaSuccess != code){
+        fprintf(stderr,"GPU Error: %s\n", cudaGetErrorString(code));
+        exit(code);
+    }
+}
 
 template<typename T, int pd, int vd>class HashTableGPU{
 public:
@@ -432,23 +439,23 @@ public:
         dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
 
         createLattice<T, pd, vd> <<<blocks, blockSize, 0, stream>>>(n, positions, scaleFactor, matrix, hashTable);
-        printf("Create Lattice: %s\n", cudaGetErrorString(cudaGetLastError()));
+        cudaErrorCheck();
 
         cleanHashTable<T, pd, vd> <<<cleanBlocks, cleanBlockSize, 0, stream>>>(2 * n * (pd + 1), hashTable);
-        printf("Clean Hash Table: %s\n", cudaGetErrorString(cudaGetLastError()));
+        cudaErrorCheck();
 
         blocks.y = pd + 1;
         splatCache<T, pd, vd><<<blocks, blockSize, 0, stream>>>(n, inputs, matrix, hashTable);
-        printf("Splat: %s\n", cudaGetErrorString(cudaGetLastError()));
+        cudaErrorCheck();
 
         for (int remainder=reverse?pd:0; remainder >= 0 && remainder <= pd; reverse?remainder--:remainder++) {
             blur<T, pd, vd><<<cleanBlocks, cleanBlockSize, 0, stream>>>(n * (pd + 1), newValues, matrix, remainder, hashTable);
-            printf("Blur %d: %s\n", remainder, cudaGetErrorString(cudaGetLastError()));
+            cudaErrorCheck();
             std::swap(hashTable.values, newValues);
         }
         blockSize.y = 1;
         slice<T, pd, vd><<<blocks, blockSize, 0, stream>>>(n, output, matrix, hashTable);
-        printf("Slice: %s\n", cudaGetErrorString(cudaGetLastError()));
+        cudaErrorCheck();
     }
 };
 
