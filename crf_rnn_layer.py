@@ -28,6 +28,7 @@ import lattice_filter_op_loader
 
 module = lattice_filter_op_loader.module
 
+
 def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta, theta_gamma, num_iterations):
     spatial_ker_weights = tf.get_variable('spatial_ker_weights', shape=(num_classes, num_classes),
                                           initializer=tf.initializers.variance_scaling(distribution='uniform'))
@@ -45,7 +46,7 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
     # Prepare filter normalization coefficients
     spatial_norm_vals = module.lattice_filter(all_ones, reference_image, bilateral=False, theta_gamma=theta_gamma)
     bilateral_norm_vals = module.lattice_filter(all_ones, reference_image, bilateral=True, theta_alpha=theta_alpha,
-                                                        theta_beta=theta_beta)
+                                                theta_beta=theta_beta)
 
     q_values = unaries
     for i in range(num_iterations):
@@ -55,18 +56,17 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
         # Spatial filtering
         spatial_out = module.lattice_filter(softmax_out, reference_image, bilateral=False, theta_gamma=theta_gamma)
 
-
         spatial_out = spatial_out / spatial_norm_vals
 
         # Bilateral filtering
         bilateral_out = module.lattice_filter(softmax_out, reference_image, bilateral=True, theta_alpha=theta_alpha,
-                                                      theta_beta=theta_beta)
+                                              theta_beta=theta_beta)
 
         bilateral_out = bilateral_out / bilateral_norm_vals
 
         # Weighting filter outputs
-        a =  tf.matmul(spatial_ker_weights, tf.reshape(tf.transpose(spatial_out), (num_classes, -1)))
-        b =  tf.matmul(bilateral_ker_weights, tf.reshape(tf.transpose(bilateral_out), (num_classes, -1)))
+        a = tf.matmul(spatial_ker_weights, tf.reshape(tf.transpose(spatial_out), (num_classes, -1)))
+        b = tf.matmul(bilateral_ker_weights, tf.reshape(tf.transpose(bilateral_out), (num_classes, -1)))
         message_passing = a + b
 
         #message_passing = tf.matmul(spatial_ker_weights, tf.reshape(spatial_out, (num_classes, -1))) + \
@@ -80,4 +80,4 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
         #pairwise = tf.reshape(pairwise, unaries_shape)
         q_values = unaries - pairwise
 
-    return q_values
+    return q_values, spatial_ker_weights, bilateral_ker_weights, compatibility_matrix

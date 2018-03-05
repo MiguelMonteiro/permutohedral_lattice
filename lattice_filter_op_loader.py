@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
-module = tf.load_op_library('./lattice_filter.so')
+module = tf.load_op_library('permutohedral_lattice/lattice_filter.so')
 
 
 @ops.RegisterGradient("LatticeFilter")
@@ -18,11 +18,11 @@ def _lattice_filter_grad(op, grad):
     """
 
     reference_image = op.inputs[1]
-    grad_vals = module.bilateral(grad, reference_image,
-                                 bilateral=op.get_attr('bilateral'),
-                                 theta_alpha=op.get_attr('theta_alpha'),
-                                 theta_beta=op.get_attr('theta_beta'),
-                                 theta_gamma=op.get_attr('theta_gamma'),
-                                 reverse=True)
+    grad_vals = module.lattice_filter(grad, reference_image,
+                                      bilateral=op.get_attr('bilateral'),
+                                      theta_alpha=op.get_attr('theta_alpha'),
+                                      theta_beta=op.get_attr('theta_beta'),
+                                      theta_gamma=op.get_attr('theta_gamma'),
+                                      reverse=True)
 
     return [grad_vals, tf.zeros_like(reference_image)]
