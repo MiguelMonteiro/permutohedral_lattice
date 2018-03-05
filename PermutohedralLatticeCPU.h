@@ -165,13 +165,14 @@ template<typename T> class PermutohedralLatticeCPU {
     std::unique_ptr<short[]> rank;
     std::unique_ptr<T[]> barycentric;
     // std::unique_ptr<short[]> key;
+    std::unique_ptr<T[]> val;
 
     // slicing is done by replaying splatting (ie storing the sparse matrix)
-    struct ReplayEntry {
-        int offset;
+    struct MatrixEntry {
+        int offset; //idx * vd
         T weight;
     };
-    std::unique_ptr<ReplayEntry[]> replay;
+    std::unique_ptr<MatrixEntry[]> matrix;
     int idx;
 
     std::unique_ptr<T[]> compute_scale_factor() {
@@ -295,13 +296,12 @@ template<typename T> class PermutohedralLatticeCPU {
             val[vd - 1] += barycentric[remainder]; //homogeneous coordinate (as if value[vd-1]=1)
 
             // Record this interaction to use later when slicing
-            replay[idx].offset = val - hashTable.getValues();
-            replay[idx].weight = barycentric[remainder];
+            matrix[idx].offset = val - hashTable.getValues();
+            matrix[idx].weight = barycentric[remainder];
             idx++;
         }
         delete[] key;
     }
-
 
     void splat(const T * positions, const T * values){
         for (int n = 0; n < N; n++) {
@@ -314,45 +314,55 @@ template<typename T> class PermutohedralLatticeCPU {
     * containing each position vector were calculated and stored in the splatting step.
     * We may reuse this to accelerate the algorithm. (See pg. 6 in paper.)
     */
-    /*void slice_point(float *col) {
-        float *base = hashTable.getValues();
+    void slice_point(T* out, int n) {
+
+        T* base = hashTable.getValues();
+
         for (int j = 0; j < vd; j++)
-            col[j] = 0;
+            val[j] = 0;
+
         for (int i = 0; i <= pd; i++) {
-            ReplayEntry r = replay[idx++];
+            MatrixEntry r = matrix[n * (pd + 1) + i];
             for (int j = 0; j < vd; j++) {
-                col[j] += r.weight * base[r.offset + j];
+                val[j] += r.weight * base[r.offset + j];
             }
         }
-    }*/
 
-    void slice(T * out){
+        T scale = 1.0 / val[vd - 1];
+        for (int j = 0; j < vd - 1; j++) {
+            out[n * (vd - 1) + j] = val[j] * scale;
+        }
+
+    }
+
+    void slice(T* out){
+        for (int n = 0; n < N; n++) {
+            slice_point(out, n);
+        }
+    }
+
+    /*void slice(T * out){
 
         idx = 0;
 
-        int im_channels = vd - 1;
-
         for (int n = 0; n < N; n++) {
-
             T *base = hashTable.getValues();
             auto col = new T[vd]{0};
             for (int i = 0; i <= pd; i++) {
-                ReplayEntry r = replay[idx];
+                MatrixEntry r = matrix[idx];
                 idx++;
                 for (int j = 0; j < vd; j++) {
                     col[j] += r.weight * base[r.offset + j];
                 }
             }
 
-            T scale = 1.0 / col[im_channels];
-
-            for (int c = 0; c < im_channels; c++) {
-                *out = col[c]* scale;
+            for (int c = 0; c < vd - 1; c++) {
+                *out = col[c] / col[vd - 1];
                 out++;
             }
             delete[] col;
         }
-    }
+    }*/
 
 
     /* Performs a Gaussian blur along each projected axis in the hyperplane. */
@@ -416,14 +426,14 @@ public:
     PermutohedralLatticeCPU(int pd_, int vd_, int N_): pd(pd_), vd(vd_), N(N_), hashTable(pd_, vd_) {
 
         // Allocate storage for various arrays
-        replay = std::unique_ptr<ReplayEntry[]>(new ReplayEntry[N * (pd + 1)]);
-        //replay = new ReplayEntry[N * (pd + 1)];
+        matrix = std::unique_ptr<MatrixEntry[]>(new MatrixEntry[N * (pd + 1)]);
+        //matrix = new MatrixEntry[N * (pd + 1)];
         idx = 0;
 
         //lattice properties
         scaleFactor = compute_scale_factor();
 
-        //arrays that are used in splatting, they are overwritten for each point but we only allocate once for speed
+        //arrays that are used in splatting and slicing, they are overwritten for each point but we only allocate once for speed
         // position embedded in subspace Hd
         elevated = std::unique_ptr<T[]>(new T[pd + 1]);
         // remainder-0 and rank describe the enclosing simplex of a point
@@ -431,6 +441,8 @@ public:
         rank = std::unique_ptr<short[]>(new short[pd + 1]);
         // barycentric coordinates of position
         barycentric = std::unique_ptr<T[]>(new T[pd + 2]);
+        //val
+        val = std::unique_ptr<T[]>(new T[vd]);
 
     }
 

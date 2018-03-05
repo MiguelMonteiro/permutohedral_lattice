@@ -371,7 +371,7 @@ __global__ static void slice(const int n, T *values, MatrixEntry<T> *matrix, Has
         weight += r.weight * val[vd - 1];
     }
 
-    weight = 1.0f / weight;
+    weight = 1.0 / weight;
     for (int j = 0; j < vd - 1; j++)
         values[idx * (vd - 1) + j] = value[j] * weight;
 }
