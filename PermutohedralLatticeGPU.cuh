@@ -428,7 +428,7 @@ public:
 
         dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
         dim3 blockSize(BLOCK_SIZE, 1, 1);
-        int cleanBlockSize = 32;
+        int cleanBlockSize = 128;
         dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
 
         createLattice<T, pd, vd> <<<blocks, blockSize, 0, stream>>>(n, positions, scaleFactor, matrix, hashTable);

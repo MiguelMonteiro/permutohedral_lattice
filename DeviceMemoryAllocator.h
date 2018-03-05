@@ -33,7 +33,11 @@ public:
         num_elements *= sizeof(t);
         auto tensor_ptr = &(tensors[filled]);
         filled++;
-        OP_REQUIRES_OK(context, context->allocate_temp(dataType, TensorShape({num_elements}), tensor_ptr));
+        //OP_REQUIRES_OK(context, context->allocate_temp(dataType, TensorShape({num_elements}), tensor_ptr));
+        auto status = context->allocate_temp(dataType, TensorShape({num_elements}), tensor_ptr);
+        if(!status.ok()){
+            LOG(FATAL) << "GPU memory allocation failed (might be due to insufficient memory)\n";
+        }
         *ptr_address = reinterpret_cast<t*>((*tensor_ptr).flat<unsigned char>().data());
     }
 
