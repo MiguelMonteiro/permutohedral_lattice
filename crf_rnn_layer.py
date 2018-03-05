@@ -49,7 +49,8 @@ def crf_rnn_layer(unaries, reference_image, num_classes, theta_alpha, theta_beta
 
     q_values = unaries
     for i in range(num_iterations):
-        softmax_out = tf.nn.softmax(q_values, dim=0)
+
+        softmax_out = tf.nn.softmax(q_values, dim=-1)
 
         # Spatial filtering
         spatial_out = module.lattice_filter(softmax_out, reference_image, bilateral=False, theta_gamma=theta_gamma)
