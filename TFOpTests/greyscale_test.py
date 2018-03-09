@@ -28,7 +28,7 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     o = np.round(sess.run(output) * 255).astype(np.uint8)
 
 im = Image.fromarray(grey)
-im.save('TFOPTests/Results/gray_original.bmp')
+im.save('TFOpTests/Results/gray_original.bmp')
 
 im = Image.fromarray(np.squeeze(o[0]))
-im.save('TFOPTests/Results/filtered_grey.bmp')
+im.save('TFOpTests/Results/filtered_grey.bmp')
