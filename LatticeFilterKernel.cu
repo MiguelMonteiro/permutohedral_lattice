@@ -40,12 +40,14 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
     int* spatial_dims_gpu;
     allocator.allocate_device_memory<int>((void**)&spatial_dims_gpu, n_spatial_dims);
     cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
+    cudaErrorCheck();
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
 
     compute_kernel<T><<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
             num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims_gpu, spatial_std, features_std);
+    cudaErrorCheck();
 
 };
 
