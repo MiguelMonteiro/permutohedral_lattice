@@ -17,7 +17,6 @@
 #define REFERENCE_CHANNELS 3
 #endif
 
-
 using namespace tensorflow;
 
 using GPUDevice = Eigen::GpuDevice;
@@ -40,7 +39,6 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
     int* spatial_dims_gpu;
     allocator.allocate_device_memory<int>((void**)&spatial_dims_gpu, n_spatial_dims);
     cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
-    cudaErrorCheck();
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
@@ -48,7 +46,6 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
     compute_kernel<T><<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
             num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims_gpu, spatial_std, features_std);
     cudaErrorCheck();
-
 };
 
 //declaration of what lattices (pd and vd) can be used
@@ -69,13 +66,13 @@ void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
     auto allocator = DeviceMemoryAllocator(context);
     //bilateral
     if(pd == SPATIAL_DIMS + REFERENCE_CHANNELS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, 5, 4>(num_super_pixels, &allocator, d.stream());
+        auto lattice = PermutohedralLatticeGPU<T, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>(num_super_pixels, &allocator, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }
     //spatial only
     if(pd == SPATIAL_DIMS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, 2, 4>(num_super_pixels, &allocator, d.stream());
+        auto lattice = PermutohedralLatticeGPU<T, SPATIAL_DIMS, INPUT_CHANNELS + 1>(num_super_pixels, &allocator, d.stream());
         lattice.filter(output, input, positions, reverse);
         return;
     }
