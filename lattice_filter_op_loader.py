@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
-module = tf.load_op_library('permutohedral_lattice/lattice_filter.so')
+module = tf.load_op_library('./lattice_filter.so')
 
 
 @ops.RegisterGradient("LatticeFilter")

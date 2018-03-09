@@ -16,7 +16,7 @@ if os.path.isfile('gray_original.bmp'):
 if os.path.isfile('filtered_grey.bmp'):
     os.remove('filtered_grey.bmp')
 
-theta_alpha = 0.6
+theta_alpha = 8.0
 theta_beta = 0.125
 
 im = Image.open('Images/input.bmp')
