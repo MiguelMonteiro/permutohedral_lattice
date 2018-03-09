@@ -5,7 +5,7 @@ add_executable(bilateral_cpu_test
         CppTests/bilateral_filter_cpu.h
         CppTests/CImg.h
         CppTests/utils.h
-        PermutohedralLatticeCPU.h)
+        src/PermutohedralLatticeCPU.h)
 
 if (LINUX)
     find_package(Threads REQUIRED)
@@ -15,7 +15,7 @@ endif ()
 
 
 # CUDA Library
-add_library(permutohedral STATIC CppTests/PermutohedralLatticeGPU.cu PermutohedralLatticeGPU.cuh DeviceMemoryAllocator.h)
+add_library(permutohedral STATIC CppTests/PermutohedralLatticeGPU.cu src/PermutohedralLatticeGPU.cuh src/DeviceMemoryAllocator.h)
 
 # Request that permutohedral be built with -std=c++11
 # As this is a public compile feature anything that links to
@@ -53,7 +53,7 @@ add_executable(compare_and_gpu_test
         CppTests/bilateral_filter_gpu.h
         CppTests/CImg.h
         CppTests/utils.h
-        PermutohedralLatticeCPU.h)
+        src/PermutohedralLatticeCPU.h)
 
 set_property(TARGET compare_and_gpu_test PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 target_link_libraries(compare_and_gpu_test PRIVATE permutohedral)

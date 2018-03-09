@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
-#include "../PermutohedralLatticeGPU.cuh"
-#include "../DeviceMemoryAllocator.h"
+#include "../src/PermutohedralLatticeGPU.cuh"
+#include "../src/DeviceMemoryAllocator.h"
 
 //input and positions should be device pointers by this point
 void lattice_filter_gpu(float * output, const float *input, const float *positions, int pd, int vd, int n) {

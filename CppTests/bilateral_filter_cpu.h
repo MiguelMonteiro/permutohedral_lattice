@@ -1,7 +1,7 @@
 //
 // Created by Miguel Monteiro on 29/01/2018.
 //
-#include "../PermutohedralLatticeCPU.h"
+#include "../src/PermutohedralLatticeCPU.h"
 #include "memory"
 
 //for the case where the image is its own reference image
