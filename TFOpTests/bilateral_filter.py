@@ -1,8 +1,8 @@
+# Test if bilateral filtering of  batch of images works (visual check required)
+# GPU OP must be compiled with SPATIAL_DIMS=2 INPUT_CHANNELS=3 REFERENCE_CHANNELS=3
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-from tensorflow.python.ops import gradient_checker
-from tensorflow.python.framework import constant_op
 from os import sys, path
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
@@ -28,6 +28,6 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     o = np.round(sess.run(output) * 255).astype(np.uint8)
 
 im = Image.fromarray(o[0])
-im.save("z_2.bmp")
+im.save('TFOPTests/Results/bilateral_out_1.bmp')
 im = Image.fromarray(o[1])
-im.save("z_1.bmp")
+im.save('TFOPTests/Results/bilateral_out_2.bmp')

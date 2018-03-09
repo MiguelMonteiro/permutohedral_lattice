@@ -48,7 +48,7 @@ endif()
 # CPU and GPU compare executable
 
 add_executable(compare_and_gpu_test
-        LatticeTests/compare_and_gpu_test.cpp
+        LatticeTests/compare_cpu_and_gpu_test.cpp
         LatticeTests/bilateral_filter_cpu.h
         LatticeTests/bilateral_filter_gpu.h
         LatticeTests/CImg.h
