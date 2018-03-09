@@ -8,12 +8,10 @@
 #include "bilateral_filter_gpu.h"
 
 int main(int argc, char **argv) {
-
     if (argc < 5) {
-		printf("Usage: ./bilateral <image file> <output file> <spatial standard deviation> <color standard deviation>\n");
+		printf("Usage: ./test_bilateral_gpu <image file> <output file> <spatial standard deviation> <color standard deviation>\n");
 		return 1;
 	}
-
 
 	cimg_library::CImg<unsigned char> image(argv[1]);
     float pixel_depth = 255.0;

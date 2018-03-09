@@ -14,7 +14,7 @@
 int main(int argc, char **argv) {
 
     if (argc < 4) {
-        printf("Usage: ./bilateral <image file> <spatial standard deviation> <color standard deviation>\n");
+        printf("Usage: ./test_compare_cpu_and_gpu <image file> <spatial standard deviation> <color standard deviation>\n");
         return 1;
     }
 
@@ -37,17 +37,6 @@ int main(int argc, char **argv) {
     float theta_alpha = atof(argv[2]);
     float theta_beta = atof(argv[3]);
 
-    //float invSpatialStdev = 1.0f /theta_alpha;
-    //float invColorStdev = 1.0f /theta_beta;
-    // Construct the position vectors out of x, y, r, g, and b.
-    //auto positions = compute_kernel(image, invSpatialStdev, invColorStdev);
-
-    /*double diff=0;
-    for(int i =0; i< 5*N; i++){
-        diff += positions_cpu[i] - positions_gpu[i];
-    }
-    std::cout.precision(17);
-    std::cout << "diff: " << diff +0.1 << std::endl;*/
 
     //GPU
     {

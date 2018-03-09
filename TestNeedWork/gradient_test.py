@@ -12,7 +12,7 @@ class HighDimGradTest(tf.test.TestCase):
         x_shape = [10, 10, 3]
         rgb_shape = [10, 10, 3]
 
-        # LatticeTests inputs: unaries and RGB values
+        # CppTests inputs: unaries and RGB values
         unary_np = np.random.randn(*x_shape).astype(np.float32)
         rgb_np = np.random.randint(low=0, high=256, size=rgb_shape).astype(np.float32) #/ 256.0
 

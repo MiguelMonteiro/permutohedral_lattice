@@ -12,9 +12,7 @@ using T = double;
 
 int main(int argc, char **argv) {
     if (argc < 5) {
-        printf("Usage: ./bilateral <input file> <output file> <spatial standard deviation> <color standard deviation>\n");
-        printf("        PNG, JPG are supported file formats.\n");
-        printf("        For instance, try ./bilateral input.png output.png 4 0.5\n");
+        printf("Usage: ./test_bilateral_cpu <input file> <output file> <spatial standard deviation> <color standard deviation>\n");
         return 1;
     }
 

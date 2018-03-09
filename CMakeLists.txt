@@ -20,9 +20,7 @@ string(REGEX REPLACE "\n$" "" TF_LIB "${TF_LIB}")
 include_directories(${TF_INC} ${TF_INC}/external/nsync/public)
 link_directories(${TF_LIB})
 
-set(LatticeTests True)
-
-if (LatticeTests)
+if (MAKE_TESTS)
     include(CMakeTests)
 endif ()
 
