@@ -27,6 +27,7 @@ output = module.lattice_filter(tf_input_image, tf_reference_image, theta_alpha=t
 with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     o = np.round(sess.run(output) * 255).astype(np.uint8)
 
+
 im = Image.fromarray(np.squeeze(grey))
 im.save('TFOpTests/Results/gray_original.bmp')
 
