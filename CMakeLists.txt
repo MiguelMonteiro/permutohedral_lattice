@@ -30,13 +30,14 @@ target_compile_features(lattice_filter PUBLIC cxx_std_11)
 target_link_libraries(lattice_filter PUBLIC tensorflow_framework)
 set_target_properties(lattice_filter PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(lattice_filter PROPERTIES PREFIX "")
-target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1")
+target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1" "-D GLIBCXX_USE_CXX11_ABI=0")
 target_compile_options(lattice_filter PUBLIC "-D SPATIAL_DIMS=${SPATIAL_DIMS}")
 target_compile_options(lattice_filter PUBLIC "-D INPUT_CHANNELS=${INPUT_CHANNELS}")
 target_compile_options(lattice_filter PUBLIC "-D REFERENCE_CHANNELS=${REFERENCE_CHANNELS}")
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0)
-    target_compile_options(lattice_filter PUBLIC "-D GLIBCXX_USE_CXX11_ABI=0")
+    target_compile_options(lattice_filter PUBLIC "-D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
+
 
 
 
