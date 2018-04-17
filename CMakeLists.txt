@@ -25,31 +25,19 @@ if (MAKE_TESTS)
 endif ()
 
 
-#[[
-add_library(cuda_lattice_filter SHARED src/LatticeFilterKernel.cu src/LatticeFilterKernel.h src/PermutohedralLatticeGPU.cuh src/DeviceMemoryAllocator.h)
-target_compile_features(cuda_lattice_filter PUBLIC cxx_std_11)
-set_target_properties(cuda_lattice_filter  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-#target_compile_options(cuda_bilateral PUBLIC "-D GOOGLE_CUDA=1" "--expt-relaxed-constexpr")
-target_compile_options(cuda_lattice_filter PUBLIC "-D GOOGLE_CUDA=1" "-D SPATIAL_DIMS=${SPATIAL_DIMS}"
-        "-D INPUT_CHANNELS=${INPUT_CHANNELS}" "-D REFERENCE_CHANNELS=${REFERENCE_CHANNELS}")
-
-add_library(lattice_filter SHARED src/LatticeFilterKernel.cpp src/LatticeFilterKernel.h src/PermutohedralLatticeCPU.h)
-target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1")
-target_link_libraries(lattice_filter PUBLIC tensorflow_framework cuda_lattice_filter)
-set_target_properties(lattice_filter PROPERTIES PREFIX "")
-]]
-
-#if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0)
-#    target_compile_options(bilateral PUBLIC "-D GLIBCXX_USE_CXX11_ABI=0")
-#endif()
-
-
 add_library(lattice_filter SHARED src/LatticeFilterKernel.cpp src/LatticeFilterKernel.cu src/LatticeFilterKernel.h src/PermutohedralLatticeCPU.h src/PermutohedralLatticeGPU.cuh src/DeviceMemoryAllocator.h)
 target_compile_features(lattice_filter PUBLIC cxx_std_11)
-set_target_properties(lattice_filter  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 target_link_libraries(lattice_filter PUBLIC tensorflow_framework)
-target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1" "-D SPATIAL_DIMS=${SPATIAL_DIMS}"
-        "-D INPUT_CHANNELS=${INPUT_CHANNELS}" "-D REFERENCE_CHANNELS=${REFERENCE_CHANNELS}")
+set_target_properties(lattice_filter PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(lattice_filter PROPERTIES PREFIX "")
+target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1")
+target_compile_options(lattice_filter PUBLIC "-D SPATIAL_DIMS=${SPATIAL_DIMS}")
+target_compile_options(lattice_filter PUBLIC "-D INPUT_CHANNELS=${INPUT_CHANNELS}")
+target_compile_options(lattice_filter PUBLIC "-D REFERENCE_CHANNELS=${REFERENCE_CHANNELS}")
+if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0)
+    target_compile_options(lattice_filter PUBLIC "-D GLIBCXX_USE_CXX11_ABI=0")
+endif()
+
+
 
 
