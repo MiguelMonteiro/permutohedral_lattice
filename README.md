@@ -1,4 +1,5 @@
 ##Permutohedral Lattice Tensorflow OP
+
 This code implements the Permutohedral Lattice  for high dimensional filtering.
 The code contatains:
 - A CPU implementation (C++);
@@ -9,7 +10,7 @@ This code can be used to perform (approximate) bilateral filtering, gaussian fil
 It can be used as part of larger algorithms such as Conditional Random Fields.
 
 
-<img src="Images/input.bmp" width="200"> | <img src="Images/output.bmp" width="200"> 
+<img src="Images/input.bmp" width="400"> | <img src="Images/output.bmp" width="400"> 
  
 #### How to compile and use
 
