@@ -12,6 +12,7 @@ It can be used as part of larger algorithms such as Conditional Random Fields.
 ![alt](Images/input.bmp){width=20%} | ![alt](Images/output.bmp){width=20%}
 
 
+<img src="Images/input.bmp" width="48">
 
 #### How to compile and use
 
