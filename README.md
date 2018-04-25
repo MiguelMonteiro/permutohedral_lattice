@@ -1,4 +1,4 @@
-##Permutohedral Lattice Tensorflow OP
+###Permutohedral Lattice Tensorflow OP
 
 This code implements the Permutohedral Lattice  for high dimensional filtering.
 The code contatains:
@@ -7,11 +7,18 @@ The code contatains:
 - TensorFlow Op Kernels that wrap the CPU and GPU implementations to be used in Python/TensorFlow;
 
 This code can be used to perform (approximate) bilateral filtering, gaussian filtering, non-local means etc...
-It can be used as part of larger algorithms such as Conditional Random Fields.
+It also supports an arbitrary number of spatial dimensions, input channels and reference channels.
 
 
+The TensorFlow op has gradients implemented and hence can be used with backprop, it can be used with `batch_size>=1`.
+This code was made with to be used as part of larger algorithms such as Conditional Random Fields (CRFs).
+
+ 
 <img src="Images/input.bmp" width="400"> | <img src="Images/output.bmp" width="400"> 
  
+
+
+
 #### How to compile and use
 
 1. Install CMake (version >= 3.9).
