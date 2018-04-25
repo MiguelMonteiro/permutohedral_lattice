@@ -1,5 +1,3 @@
-###Permutohedral Lattice Tensorflow OP
-
 This code implements the Permutohedral Lattice  for high dimensional filtering.
 The code contatains:
 - A CPU implementation (C++);
@@ -58,6 +56,23 @@ Because of the way the GPU (CUDA) code is implemented, the number of spatial dim
 
 ##### TensorFlow Python
 
+Example of bilateral filtering a 2D filtering gray scale image based on a RGB image. 
+On GPU compile with `SPATIAL_DIMS=2`, `INPUT_CHANNELS=1` and `REFERENCE_CHANNELS=3`
+
+
+````
+import tensorflow as tf
+import lattice_filter_op_loader
+
+input = tf.placeholder(shape=(batch_size, width, height, 1))
+reference = tf.placeholder(shape=(batch_size, width, height, 3))
+
+output = module.lattice_filter(input, reference_image, bilateral=True, theta_alpha=8, theta_beta=0.125)
+
+# Then run the graph, load, save images
+````
+
+<img src="TFOpTests/Results/gray_original.bmp" width="400"> | <img src="TFOpTests/Results/filtered_grey.bmp" width="400"> 
 
 
 #### Known Issues
@@ -67,3 +82,6 @@ Because of the way the GPU (CUDA) code is implemented, the number of spatial dim
 I have not been able to figure out how to choose between them in python, and if both are ON the CPU one is always chosen
  as default. As a result, in the file `LatticeFilterKernel.cpp` the registering of the CPU kernel is commented.
  You can un-comment it to use it.
+3. The CPU and GPU versions don't produce exactly the same result (0.2% different). Has to do with implementation.
+4. The gradients of the TensorFlow Op don't match numerically calculated gradients for some values of the various theta 
+parameters. I suspect it has something to do with numerical issues when dividing by numbers close to zero.

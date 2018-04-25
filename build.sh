@@ -24,4 +24,5 @@ cmake -DCMAKE_BUILD_TYPE=Debug -D CMAKE_CUDA_COMPILER=${CUDA_COMPILER} \
 
 make
 
+cp lattice_filter.so ../
 
