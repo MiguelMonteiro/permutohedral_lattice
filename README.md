@@ -9,11 +9,8 @@ This code can be used to perform (approximate) bilateral filtering, gaussian fil
 It can be used as part of larger algorithms such as Conditional Random Fields.
 
 
-![alt](Images/input.bmp){width=20%} | ![alt](Images/output.bmp){width=20%}
-
-
-<img src="Images/input.bmp" width="48">
-
+<img src="Images/input.bmp" width="200"> | <img src="Images/output.bmp" width="200"> 
+ 
 #### How to compile and use
 
 1. Install CMake (version >= 3.9).
