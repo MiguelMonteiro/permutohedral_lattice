@@ -1,5 +1,7 @@
 This code implements the Permutohedral Lattice  for high dimensional filtering.
-The code contatains:
+Read the original [paper.]( https://graphics.stanford.edu/papers/permutohedral/)
+
+The code contains:
 - A CPU implementation (C++);
 - A GPU implementation (C++/CUDA);
 - TensorFlow Op Kernels that wrap the CPU and GPU implementations to be used in Python/TensorFlow;
@@ -87,4 +89,4 @@ I have not been able to figure out how to choose between them in python, and if 
 4. The gradients of the TensorFlow Op don't match numerically calculated gradients for some values of the various theta 
 parameters. I suspect it has something to do with numerical issues when dividing by numbers close to zero.
 
-#### Collaborators needed
+#### Collaborators are welcome
