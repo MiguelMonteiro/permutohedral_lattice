@@ -4,4 +4,3 @@ build_dir/*
 .DS_Store
 *.pyc
 *.nii
-TFOpTests/Results/*

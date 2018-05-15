@@ -28,6 +28,6 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     o = np.round(sess.run(output) * 255).astype(np.uint8)
 
 im = Image.fromarray(o[0])
-im.save('TFOpTests/Results/bilateral_out_1.bmp')
+im.save('Images/bilateral_out_1.bmp')
 im = Image.fromarray(o[1])
-im.save('TFOpTests/Results/bilateral_out_2.bmp')
+im.save('Images/bilateral_out_2.bmp')

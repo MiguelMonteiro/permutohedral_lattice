@@ -75,7 +75,7 @@ output = module.lattice_filter(input, reference_image, bilateral=True, theta_alp
 # Then run the graph, load, save images
 ````
 
-<img src="TFOpTests/Results/gray_original.bmp" width="400"> | <img src="TFOpTests/Results/filtered_grey.bmp" width="400"> 
+<img src="Images/gray_original.bmp" width="400"> | <img src="Images/filtered_grey.bmp" width="400"> 
 
 
 #### Known Issues

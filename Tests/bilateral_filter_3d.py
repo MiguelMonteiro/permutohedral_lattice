@@ -26,4 +26,4 @@ o = np.round(o).astype(np.int16)
 
 i = im.get_data()
 i[:] = np.squeeze(o)
-nib.save(im, 'TFOpTests/Resutls/brain_filtered.nii')
+nib.save(im, 'Images/brain_filtered.nii')
