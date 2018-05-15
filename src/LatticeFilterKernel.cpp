@@ -193,8 +193,8 @@ private:
 // Register the CPU kernels.
 #define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), LatticeFilterOp<CPUDevice, T>);
 
-//REGISTER_CPU(float);
-//REGISTER_CPU(double);
+REGISTER_CPU(float);
+REGISTER_CPU(double);
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA

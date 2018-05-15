@@ -81,10 +81,6 @@ output = module.lattice_filter(input, reference_image, bilateral=True, theta_alp
 #### Known Issues
 
 1. The GPU version must know `SPATIAL_DIMS`, `INPUT_CHANNELS` and `REFERENCE_CHANNELS` at run time.
-2. The TensorFlow CPU and GPU Op kernels don't play well with each other, even though they both work individually.
-I have not been able to figure out how to choose between them in python, and if both are ON the CPU one is always chosen
- as default. As a result, in the file `LatticeFilterKernel.cpp` the registering of the CPU kernel is commented.
- You can un-comment it to use it.
 3. The CPU and GPU versions don't produce exactly the same result (0.2% different). Has to do with implementation.
 4. The gradients of the TensorFlow Op don't match numerically calculated gradients for some values of the various theta 
 parameters. I suspect it has something to do with numerical issues when dividing by numbers close to zero.
