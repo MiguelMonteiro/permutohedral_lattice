@@ -28,10 +28,10 @@ using namespace tensorflow;
 template<typename Device, typename T>
 struct LatticeFilter {
     void operator()(const Device &d,
-                    OpKernelContext* context,
+                    OpKernelContext *context,
                     T *output,
                     const T *input,
-                    const T * positions,
+                    const T *positions,
                     int num_super_pixels,
                     int pd,
                     int vd,
@@ -42,15 +42,15 @@ struct LatticeFilter {
 template<typename Device, typename T>
 struct ComputeKernel {
     void operator()(const Device &d,
-                    OpKernelContext* context,
+                    OpKernelContext *context,
                     const T *reference_image,
-                    T * positions,
+                    T *positions,
                     int num_super_pixels,
                     int n_spatial_dims,
                     int *spatial_dims,
                     int n_reference_channels,
-                    T spatial_std,
-                    T features_std);
+                    const T *spatial_std,
+                    const T *features_std);
 };
 
 
@@ -61,10 +61,10 @@ struct ComputeKernel {
 template<typename T>
 struct LatticeFilter<Eigen::GpuDevice, T> {
     void operator()(const Eigen::GpuDevice &d,
-                    OpKernelContext* context,
+                    OpKernelContext *context,
                     T *output,
                     const T *input,
-                    const T * positions,
+                    const T *positions,
                     int num_super_pixels,
                     int pd,
                     int vd,
@@ -74,15 +74,15 @@ struct LatticeFilter<Eigen::GpuDevice, T> {
 template<typename  T>
 struct ComputeKernel<Eigen::GpuDevice, T> {
     void operator()(const Eigen::GpuDevice &d,
-                    OpKernelContext* context,
-                    const T * reference_image,
-                    T * positions,
+                    OpKernelContext *context,
+                    const T *reference_image,
+                    T *positions,
                     int num_super_pixels,
                     int n_spatial_dims,
-                    int * spatial_dims,
+                    int *spatial_dims,
                     int n_reference_channels,
-                    T spatial_std,
-                    T features_std);
+                    const T *spatial_std,
+                    const T *features_std);
 };
 
 

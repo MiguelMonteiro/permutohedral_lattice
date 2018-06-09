@@ -50,16 +50,16 @@ using GPUDevice = Eigen::GpuDevice;
 // CPU specialization of actual computation.
 template<typename T>
 struct ComputeKernel<CPUDevice, T>{
-    void operator()(const CPUDevice& d,
-                    OpKernelContext* context,
+    void operator()(const CPUDevice &d,
+                    OpKernelContext *context,
                     const T *reference_image,
-                    T * positions,
+                    T *positions,
                     int num_super_pixels,
                     int n_spatial_dims,
                     int *spatial_dims,
                     int n_reference_channels,
-                    T spatial_std,
-                    T features_std){
+                    const T *spatial_std,
+                    const T *features_std){
         compute_kernel_cpu<T>(reference_image, positions, num_super_pixels, n_reference_channels, n_spatial_dims,
                               spatial_dims, spatial_std, features_std);
     }
@@ -67,9 +67,9 @@ struct ComputeKernel<CPUDevice, T>{
 
 template <typename T>
 struct LatticeFilter<CPUDevice, T>{
-    void operator()(const CPUDevice& d,
-                    OpKernelContext* context,
-                    T* output,
+    void operator()(const CPUDevice &d,
+                    OpKernelContext *context,
+                    T *output,
                     const T *input,
                     const T *positions,
                     int num_super_pixels,
@@ -102,10 +102,6 @@ public:
         assert(theta_alpha.dims() == 0);
         assert(theta_beta.dims() == 0);
         assert(theta_gamma.dims() == 0);
-        printf("HERE\n");
-        printf("%f\n", theta_alpha.flat<T>().data()[0]);
-        printf("%f\n", theta_beta.flat<T>().data()[0]);
-        printf("%f\n", theta_gamma.flat<T>().data()[0]);
 
         // Create an output tensor
         Tensor* output_tensor = nullptr;
@@ -131,22 +127,21 @@ public:
         }
 
         vd = n_input_channels + 1;
-        T spatial_std;
-        T features_std;
+        const T *spatial_std;
+        const T *features_std;
         int n_reference_channels;
 
         if(bilateral){
             assert(reference_image_tensor.dims() == rank);
             n_reference_channels = static_cast<int>(reference_image_tensor.dim_size(rank - 1));
             pd = n_reference_channels + n_spatial_dims;
-            spatial_std = 8.0;//theta_alpha.flat<T>().data()[0];
-            features_std = 0.125;//theta_beta.flat<T>().data()[0];
+            spatial_std = &(theta_alpha.flat<T>().data()[0]);
+            features_std = &(theta_beta.flat<T>().data()[0]);
         }else{
-            printf("got here\n");
             pd = n_spatial_dims;
             n_reference_channels = 0; //set to zero so ComputeKernel does not use reference image channels
-            spatial_std = theta_gamma.flat<T>().data()[0];
-            features_std = -1; //does not matter
+            spatial_std = &(theta_gamma.flat<T>().data()[0]);
+            features_std = nullptr; //does not matter
         }
 
         // Allocate kernel positions and calculate them

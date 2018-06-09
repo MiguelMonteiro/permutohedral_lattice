@@ -456,19 +456,19 @@ static void compute_kernel_cpu(const T * reference,
                                int reference_channels,
                                int n_sdims,
                                const int *sdims,
-                               T spatial_std,
-                               T feature_std){
+                               const T* spatial_std,
+                               const T* feature_std){
 
     int num_dims = n_sdims + reference_channels;
 
     for(int idx = 0; idx < num_super_pixels; idx++){
         int divisor = 1;
         for(int sdim = n_sdims - 1; sdim >= 0; sdim--){
-            positions[num_dims * idx + sdim] = ((idx / divisor) % sdims[sdim]) / spatial_std;
+            positions[num_dims * idx + sdim] = ((idx / divisor) % sdims[sdim]) / *spatial_std;
             divisor *= sdims[sdim];
         }
         for(int channel = 0; channel < reference_channels; channel++){
-            positions[num_dims * idx + n_sdims + channel] = reference[idx * reference_channels + channel] / feature_std;
+            positions[num_dims * idx + n_sdims + channel] = reference[idx * reference_channels + channel] / *feature_std;
         }
     }
 };

@@ -43,16 +43,16 @@ using GPUDevice = Eigen::GpuDevice;
 
 
 template<typename T>
-void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
-                                             OpKernelContext* context,
+void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice &d,
+                                             OpKernelContext *context,
                                              const T *reference_image,
-                                             T * positions,
+                                             T *positions,
                                              int num_super_pixels,
                                              int n_spatial_dims,
                                              int *spatial_dims,
                                              int n_reference_channels,
-                                             T spatial_std,
-                                             T features_std){
+                                             const T *spatial_std,
+                                             const T *features_std){
 
     auto allocator = DeviceMemoryAllocator(context);
 
