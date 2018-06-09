@@ -31,11 +31,11 @@ REGISTER_OP("LatticeFilter")
         .Attr("T: {float32, float64}")
         .Attr("reverse: bool = false")
         .Attr("bilateral: bool = true")
-        .Attr("theta_alpha: float = 1.0")
-        .Attr("theta_beta: float = 1.0")
-        .Attr("theta_gamma: float = 1.0")
         .Input("input_image: T")
         .Input("reference_image: T")
+        .Input("theta_alpha: T")
+        .Input("theta_beta: T")
+        .Input("theta_gamma: T")
         .Output("output: T")
         .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
             c->set_output(0, c->input(0));
@@ -90,15 +90,18 @@ public:
     explicit LatticeFilterOp(OpKernelConstruction* context) : OpKernel(context) {
         OP_REQUIRES_OK(context, context->GetAttr("reverse", &reverse));
         OP_REQUIRES_OK(context, context->GetAttr("bilateral", &bilateral));
-        OP_REQUIRES_OK(context, context->GetAttr("theta_alpha", &theta_alpha));
-        OP_REQUIRES_OK(context, context->GetAttr("theta_beta", &theta_beta));
-        OP_REQUIRES_OK(context, context->GetAttr("theta_gamma", &theta_gamma));
     }
 
     void Compute(OpKernelContext* context) override {
         // Grab the input tensor
         const Tensor& input_tensor = context->input(0);
         const Tensor& reference_image_tensor = context->input(1);
+        const Tensor& theta_alpha = context->input(2);
+        const Tensor& theta_beta = context->input(3);
+        const Tensor& theta_gamma = context->input(4);
+        assert(theta_alpha.dims() == 0);
+        assert(theta_beta.dims() == 0);
+        assert(theta_gamma.dims() == 0);
 
         // Create an output tensor
         Tensor* output_tensor = nullptr;
@@ -132,12 +135,12 @@ public:
             assert(reference_image_tensor.dims() == rank);
             n_reference_channels = static_cast<int>(reference_image_tensor.dim_size(rank - 1));
             pd = n_reference_channels + n_spatial_dims;
-            spatial_std = theta_alpha;
-            features_std = theta_beta;
+            spatial_std = theta_alpha.flat<T>().data()[0];
+            features_std = theta_beta.flat<T>().data()[0];
         }else{
             pd = n_spatial_dims;
             n_reference_channels = 0; //set to zero so ComputeKernel does not use reference image channels
-            spatial_std = theta_gamma;
+            spatial_std = theta_gamma.flat<T>().data()[0];
             features_std = -1; //does not matter
         }
 
@@ -183,9 +186,6 @@ public:
 private:
     bool reverse;
     bool bilateral;
-    float theta_alpha;
-    float theta_beta;
-    float theta_gamma;
     int pd;
     int vd;
 };
