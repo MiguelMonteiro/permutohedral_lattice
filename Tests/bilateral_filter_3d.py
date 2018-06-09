@@ -17,7 +17,7 @@ image /= np.max(image)
 tf_input_image = tf.constant(image, dtype=tf.float32)
 tf_reference_image = tf.constant(image, dtype=tf.float32)
 
-output = module.bilateral(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta, theta_gamma=1.0, bilateral=False)
+output = module.lattice_filter(tf_input_image, tf_reference_image, theta_alpha=theta_alpha, theta_beta=theta_beta, theta_gamma=1.0)
 
 with tf.Session() as sess:
     o = sess.run(output) * 3766

@@ -102,6 +102,10 @@ public:
         assert(theta_alpha.dims() == 0);
         assert(theta_beta.dims() == 0);
         assert(theta_gamma.dims() == 0);
+        printf("HERE\n");
+        printf("%f\n", theta_alpha.flat<T>().data()[0]);
+        printf("%f\n", theta_beta.flat<T>().data()[0]);
+        printf("%f\n", theta_gamma.flat<T>().data()[0]);
 
         // Create an output tensor
         Tensor* output_tensor = nullptr;
@@ -135,9 +139,10 @@ public:
             assert(reference_image_tensor.dims() == rank);
             n_reference_channels = static_cast<int>(reference_image_tensor.dim_size(rank - 1));
             pd = n_reference_channels + n_spatial_dims;
-            spatial_std = theta_alpha.flat<T>().data()[0];
-            features_std = theta_beta.flat<T>().data()[0];
+            spatial_std = 8.0;//theta_alpha.flat<T>().data()[0];
+            features_std = 0.125;//theta_beta.flat<T>().data()[0];
         }else{
+            printf("got here\n");
             pd = n_spatial_dims;
             n_reference_channels = 0; //set to zero so ComputeKernel does not use reference image channels
             spatial_std = theta_gamma.flat<T>().data()[0];
