@@ -33,9 +33,8 @@ REGISTER_OP("LatticeFilter")
         .Attr("bilateral: bool = true")
         .Input("input_image: T")
         .Input("reference_image: T")
-        .Input("theta_alpha: T")
-        .Input("theta_beta: T")
-        .Input("theta_gamma: T")
+        .Input("theta_spatial: T")
+        .Input("theta_color: T")
         .Output("output: T")
         .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
             c->set_output(0, c->input(0));
@@ -96,12 +95,11 @@ public:
         // Grab the input tensor
         const Tensor& input_tensor = context->input(0);
         const Tensor& reference_image_tensor = context->input(1);
-        const Tensor& theta_alpha = context->input(2);
-        const Tensor& theta_beta = context->input(3);
-        const Tensor& theta_gamma = context->input(4);
-        assert(theta_alpha.dims() == 0);
-        assert(theta_beta.dims() == 0);
-        assert(theta_gamma.dims() == 0);
+        const Tensor& theta_spatial = context->input(2);
+        const Tensor& theta_color = context->input(3);
+        //assert(theta_alpha.dims() == 0);
+        //assert(theta_beta.dims() == 0);
+        //assert(theta_gamma.dims() == 0);
 
         // Create an output tensor
         Tensor* output_tensor = nullptr;
@@ -127,21 +125,19 @@ public:
         }
 
         vd = n_input_channels + 1;
-        const T *spatial_std;
-        const T *features_std;
+
         int n_reference_channels;
+        const T *spatial_std = &(theta_spatial.flat<T>().data()[0]);
+        const T *features_std = nullptr;
 
         if(bilateral){
             assert(reference_image_tensor.dims() == rank);
             n_reference_channels = static_cast<int>(reference_image_tensor.dim_size(rank - 1));
             pd = n_reference_channels + n_spatial_dims;
-            spatial_std = &(theta_alpha.flat<T>().data()[0]);
-            features_std = &(theta_beta.flat<T>().data()[0]);
+            features_std = &(theta_color.flat<T>().data()[0]);
         }else{
             pd = n_spatial_dims;
             n_reference_channels = 0; //set to zero so ComputeKernel does not use reference image channels
-            spatial_std = &(theta_gamma.flat<T>().data()[0]);
-            features_std = nullptr; //does not matter
         }
 
         // Allocate kernel positions and calculate them

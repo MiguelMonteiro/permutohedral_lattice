@@ -6,6 +6,7 @@ from tensorflow.python.framework import constant_op
 import high_dim_filter2d_grad
 custom_module = high_dim_filter2d_grad.custom_module
 
+
 class HighDimGradTest(tf.test.TestCase):
 
     def test_high_dim_filter_grad(self):

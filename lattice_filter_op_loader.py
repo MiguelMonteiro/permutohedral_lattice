@@ -42,19 +42,18 @@ def _lattice_filter_grad(op, grad):
     Returns:
     Gradients with respect to the input of `lattice_filter`.
     """
-
+    input_image = op.inputs[0]
     reference_image = op.inputs[1]
     theta_alpha = op.inputs[2]
     theta_beta = op.inputs[3]
     theta_gamma = op.inputs[4]
-
+    output = op.outputs[0]
+    bilateral = op.get_attr('bilateral')
     grad_vals = module.lattice_filter(grad, reference_image,
-                                      bilateral=op.get_attr('bilateral'),
+                                      bilateral=bilateral,
                                       theta_alpha=theta_alpha,
                                       theta_beta=theta_beta,
                                       theta_gamma=theta_gamma,
                                       reverse=True)
-    theta_alpha_grad = 1
-    theta_beta_grad = 2
-    theta_gamma_grad = 3
-    return [grad_vals, tf.zeros_like(reference_image), theta_alpha_grad, theta_beta_grad, theta_gamma_grad]
+
+    return [grad_vals, tf.zeros_like(reference_image), 0, 0, 0]

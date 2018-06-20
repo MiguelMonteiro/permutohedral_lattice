@@ -12,7 +12,7 @@ import lattice_filter_op_loader
 module = lattice_filter_op_loader.module
 
 with tf.device('gpu:0'):
-    theta_alpha = tf.constant(8.0, dtype=tf.float32)
+    theta_alpha = tf.Variable(8.0, dtype=tf.float32)
     theta_beta = tf.constant(0.125, dtype=tf.float32)
     theta_gamma = tf.constant(1.0, dtype=tf.float32)
     im = Image.open('Images/input.bmp')
@@ -29,8 +29,9 @@ with tf.device('gpu:0'):
                                    theta_beta=theta_beta,
                                    theta_gamma=theta_gamma,
                                    bilateral=True)
+    init_op = tf.global_variables_initializer()
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-        a = sess.run(theta_alpha)
+        _ = sess.run(init_op)
         o = np.round(sess.run(output) * 255).astype(np.uint8)
 
     im = Image.fromarray(o[0])
