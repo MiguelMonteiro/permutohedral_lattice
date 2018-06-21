@@ -23,12 +23,10 @@ with tf.device('gpu:0'):
     tf_input_batch = tf.stack([tf_input_image, tf_input_image])
     tf_reference_batch = tf.stack([tf_reference_image, tf_reference_image])
 
-    output = module.lattice_filter(tf_input_batch,
-                                   tf_reference_batch,
-                                   theta_alpha=theta_alpha,
-                                   theta_beta=theta_beta,
-                                   theta_gamma=theta_gamma,
-                                   bilateral=True)
+    output = module.bilateral_filter(tf_input_batch,
+                                    tf_reference_batch,
+                                    theta_spatial=theta_alpha,
+                                    theta_color=theta_beta)
     init_op = tf.global_variables_initializer()
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         _ = sess.run(init_op)

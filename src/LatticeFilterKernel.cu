@@ -21,93 +21,79 @@ SOFTWARE.*/
 #ifdef GOOGLE_CUDA
 #define EIGEN_USE_GPU
 #include "LatticeFilterKernel.h"
-
 #include "tensorflow/core/framework/op_kernel.h"
-//#include "tensorflow/core/util/cuda_kernel_helper.h"
 #include "PermutohedralLatticeGPU.cuh"
 #include "DeviceMemoryAllocator.h"
 
-#ifndef SPATIAL_DIMS
-#define SPATIAL_DIMS 2
-#endif
-#ifndef INPUT_CHANNELS
-#define INPUT_CHANNELS 3
-#endif
-#ifndef REFERENCE_CHANNELS
-#define REFERENCE_CHANNELS 3
-#endif
-
 using namespace tensorflow;
-
 using GPUDevice = Eigen::GpuDevice;
 
+template<typename T, int pd, int vd>
+struct LatticeFilter<GPUDevice , T, pd, vd>{
+    LatticeFilter(OpKernelContext *context,
+                  int num_hypervoxels,
+                  int num_input_channels,
+                  int num_spatial_dims,
+                  int num_reference_channels,
+                  const T *spatial_std,
+                  const T *color_std,
+                  bool reverse): context(context),
+                                 num_hypervoxels(num_hypervoxels),
+                                 num_spatial_dims(num_spatial_dims),
+                                 num_input_channels(num_input_channels),
+                                 num_reference_channels(num_reference_channels),
+                                 spatial_std(spatial_std),
+                                 color_std(color_std),
+                                 reverse(reverse){};
 
-template<typename T>
-void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice &d,
-                                             OpKernelContext *context,
-                                             const T *reference_image,
-                                             T *positions,
-                                             int num_super_pixels,
-                                             int n_spatial_dims,
-                                             int *spatial_dims,
-                                             int n_reference_channels,
-                                             const T *spatial_std,
-                                             const T *features_std){
+    void operator()(T* output_image, const T *input_image, const T *reference_image, int *spatial_dims) {
 
-    auto allocator = DeviceMemoryAllocator(context);
+        if((pd != num_spatial_dims + num_reference_channels || pd != num_spatial_dims) && vd != num_input_channels + 1){
+            LOG(FATAL) << "GPU filter not compiled for these spatial dimensions, input_image and/or reference channels";
+            return;
+        }
+        auto allocator = DeviceMemoryAllocator(context);
 
-    int* spatial_dims_gpu;
-    allocator.allocate_device_memory<int>((void**)&spatial_dims_gpu, n_spatial_dims);
-    cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
+        int* spatial_dims_gpu;
+        allocator.allocate_device_memory<int>((void**)&spatial_dims_gpu, num_spatial_dims);
+        allocator.memcpy<int>(spatial_dims_gpu, spatial_dims, num_spatial_dims);
 
-    dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
-    dim3 blockSize(BLOCK_SIZE, 1, 1);
+        T * position_vectors;
+        allocator.allocate_device_memory<T>((void**)&position_vectors, num_hypervoxels * pd);
 
-    compute_kernel<T><<<blocks, blockSize, 0, d.stream()>>>(reference_image, positions,
-            num_super_pixels, n_reference_channels, n_spatial_dims, spatial_dims_gpu, spatial_std, features_std);
-    cudaErrorCheck();
+        dim3 blocks((num_hypervoxels - 1) / BLOCK_SIZE + 1, 1, 1);
+        dim3 blockSize(BLOCK_SIZE, 1, 1);
+
+        auto stream = context->eigen_device<GPUDevice>().stream();
+        compute_position_vectors<T><<<blocks, blockSize, 0, stream>>>( reference_image,
+                position_vectors,
+                num_hypervoxels,
+                num_reference_channels,
+                num_spatial_dims,
+                spatial_dims_gpu,
+                spatial_std,
+                color_std);
+        cudaErrorCheck();
+        auto lattice = PermutohedralLatticeGPU<T, pd, vd>(num_hypervoxels, &allocator, stream);
+        lattice.filter(output_image, input_image, position_vectors, reverse);
+        cudaErrorCheck();
+    }
+
+private:
+    OpKernelContext* context;
+    int num_hypervoxels;
+    int num_input_channels;
+    int num_spatial_dims;
+    int num_reference_channels;
+    const T *spatial_std;
+    const T *color_std;
+    bool reverse;
 };
 
-//declaration of what lattices (pd and vd) can be used
-
-
-// Define the GPU implementation that launches the CUDA kernel.
-template <typename T>
-void LatticeFilter<GPUDevice, T>::operator()(const GPUDevice& d,
-                                             OpKernelContext* context,
-                                             T* output,
-                                             const T *input,
-                                             const T *positions,
-                                             int num_super_pixels,
-                                             int pd,
-                                             int vd,
-                                             bool reverse) {
-
-    auto allocator = DeviceMemoryAllocator(context);
-    //bilateral
-    if(pd == SPATIAL_DIMS + REFERENCE_CHANNELS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>(num_super_pixels, &allocator, d.stream());
-        lattice.filter(output, input, positions, reverse);
-        return;
-    }
-    //spatial only
-    if(pd == SPATIAL_DIMS && vd == INPUT_CHANNELS + 1){
-        auto lattice = PermutohedralLatticeGPU<T, SPATIAL_DIMS, INPUT_CHANNELS + 1>(num_super_pixels, &allocator, d.stream());
-        lattice.filter(output, input, positions, reverse);
-        return;
-    }
-    else{
-        LOG(FATAL) << "GPU filter not compiled for these spatial dimensions, input and/or reference channels";
-    }
-}
-
-
 // Explicitly instantiate functors for the types of OpKernels registered.
-template struct ComputeKernel<GPUDevice, float>;
-template struct LatticeFilter<GPUDevice, float>;
-template struct ComputeKernel<GPUDevice, double>;
-template struct LatticeFilter<GPUDevice, double>;
-
-//template struct LatticeFilter<GPUDevice, int32>;
+template struct LatticeFilter<GPUDevice, float, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>;
+template struct LatticeFilter<GPUDevice, double, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>;
+template struct LatticeFilter<GPUDevice, float, SPATIAL_DIMS, INPUT_CHANNELS + 1>;
+template struct LatticeFilter<GPUDevice, double, SPATIAL_DIMS, INPUT_CHANNELS + 1>;
 
 #endif  // GOOGLE_CUDA

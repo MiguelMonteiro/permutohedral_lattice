@@ -29,7 +29,7 @@ from os import path
 module = tf.load_op_library(path.join(path.dirname(path.abspath(__file__)), 'lattice_filter.so'))
 
 
-@ops.RegisterGradient("LatticeFilter")
+@ops.RegisterGradient("BilateralFilter")
 def _lattice_filter_grad(op, grad):
     """ Gradients for the LatticeFilter op. We only need to calculate the gradients
     w.r.t. the first input (unaries) as we never need to backprop errors to the
@@ -49,7 +49,7 @@ def _lattice_filter_grad(op, grad):
     theta_gamma = op.inputs[4]
     output = op.outputs[0]
     bilateral = op.get_attr('bilateral')
-    grad_vals = module.lattice_filter(grad, reference_image,
+    grad_vals = module.bilateral_fitler(grad, reference_image,
                                       bilateral=bilateral,
                                       theta_alpha=theta_alpha,
                                       theta_beta=theta_beta,

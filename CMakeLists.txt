@@ -12,7 +12,7 @@ endif()
 
 #just needed for Clion code indexing
 include_directories(/usr/local/cuda/include/)
-
+#include_directories(/usr/local/lib/python2.7/site-packages/tensorflow/include)
 execute_process(COMMAND python2 -c "import tensorflow as tf;  print(tf.sysconfig.get_include())" OUTPUT_VARIABLE TF_INC)
 execute_process(COMMAND python2 -c "import tensorflow as tf; print(tf.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIB)
 string(REGEX REPLACE "\n$" "" TF_INC "${TF_INC}")

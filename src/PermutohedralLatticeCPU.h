@@ -98,7 +98,10 @@ public:
         capacity *= 2;
 
         // Migrate the value vectors.
-        auto newValues = new T[vd * capacity / 2]{0};
+        auto newValues = new T[vd * capacity / 2];
+        for(int k=0; k < vd * capacity / 2; k++)
+            newValues[k]=0;
+
         std::memcpy(newValues, values, sizeof(T) * vd * filled);
         delete[] values;
         values = newValues;
@@ -138,7 +141,9 @@ public:
         entries = new int[capacity];
         memset(entries, -1, capacity*sizeof(int));
         keys = new short[pd * capacity / 2];
-        values = new T[vd * capacity / 2]{0};
+        values = new T[vd * capacity / 2];
+        for(int k=0; k <vd * capacity / 2; k++)
+            values[k] = 0;
     }
 
     ~HashTableCPU(){
@@ -171,7 +176,7 @@ public:
 };
 
 
-template<typename T> class PermutohedralLatticeCPU {
+    template<typename T> class PermutohedralLatticeCPU {
 
     int pd, vd, N;
     std::unique_ptr<T[]> scaleFactor;
@@ -217,13 +222,13 @@ template<typename T> class PermutohedralLatticeCPU {
     }
 
 
-    void embed_position_vector(const T *position) {
-        // embed position vector into the hyperplane
-        // first rotate position into the (pd+1)-dimensional hyperplane
+    void embed_position_vector(const T *position_vector) {
+        // embed position_vector vector into the hyperplane
+        // first rotate position_vector into the (pd+1)-dimensional hyperplane
         // sm contains the sum of 1..n of our feature vector
         T sm = 0;
         for (int i = pd; i > 0; i--) {
-            float cf = position[i - 1] * scaleFactor[i - 1];
+            float cf = position_vector[i - 1] * scaleFactor[i - 1];
             elevated[i] = sm - i * cf;
             sm += cf;
         }
@@ -285,9 +290,9 @@ template<typename T> class PermutohedralLatticeCPU {
         barycentric[0] += 1.0 + barycentric[pd + 1];
     }
 
-    void splat_point(const T *position, const T * value) {
+    void splat_point(const T *position_vector, const T * value) {
 
-        embed_position_vector(position);
+        embed_position_vector(position_vector);
 
         find_enclosing_simplex();
 
@@ -319,9 +324,9 @@ template<typename T> class PermutohedralLatticeCPU {
         delete[] key;
     }
 
-    void splat(const T * positions, const T * values){
+    void splat(const T * position_vectors, const T * values){
         for (int n = 0; n < N; n++) {
-            splat_point(&(positions[n*pd]), &(values[n*(vd-1)]));
+            splat_point(&(position_vectors[n*pd]), &(values[n*(vd-1)]));
         }
     }
 
@@ -369,9 +374,9 @@ template<typename T> class PermutohedralLatticeCPU {
         //auto new_values = new T[vd * hashTable.size()];
         auto new_values = new T[vd * hashTable.capacity];
 
-        auto zero = new T[vd]{0};
-        //for (int k = 0; k < vd; k++)
-        //    zero[k] = 0;
+        auto zero = new T[vd];
+        for (int k = 0; k < vd; k++)
+            zero[k] = 0;
 
         // For each of pd+1 axes,
         for (int remainder=reverse?pd:0; remainder >= 0 && remainder <= pd; reverse?remainder--:remainder++){
@@ -416,7 +421,7 @@ template<typename T> class PermutohedralLatticeCPU {
 
 public:
 
-    PermutohedralLatticeCPU(int pd_, int vd_, int N_): pd(pd_), vd(vd_), N(N_), hashTable(pd_, vd_) {
+    PermutohedralLatticeCPU(int pd, int vd, int N): pd(pd), vd(vd), N(N), hashTable(pd, vd) {
 
         // Allocate storage for various arrays
         matrix = std::unique_ptr<MatrixEntry[]>(new MatrixEntry[N * (pd + 1)]);
@@ -432,15 +437,15 @@ public:
         // remainder-0 and rank describe the enclosing simplex of a point
         rem0 = std::unique_ptr<T[]>(new T[pd + 1]);
         rank = std::unique_ptr<short[]>(new short[pd + 1]);
-        // barycentric coordinates of position
+        // barycentric coordinates of position vector
         barycentric = std::unique_ptr<T[]>(new T[pd + 2]);
         //val
         val = std::unique_ptr<T[]>(new T[vd]);
 
     }
 
-    void filter(T * output, const T* input, const T* positions, bool reverse) {
-        splat(positions, input);
+    void filter(T * output, const T* input, const T* position_vectors, bool reverse) {
+        splat(position_vectors, input);
         blur(reverse);
         slice(output);
     }
@@ -450,25 +455,27 @@ public:
 
 
 template <typename T>
-static void compute_kernel_cpu(const T * reference,
-                               T * positions,
-                               int num_super_pixels,
-                               int reference_channels,
-                               int n_sdims,
-                               const int *sdims,
-                               const T* spatial_std,
-                               const T* feature_std){
+static void compute_position_vectors(const T *reference_image,
+                                     T *position_vectors,
+                                     int num_hypervoxels,
+                                     int num_reference_channels,
+                                     int num_spatial_dims,
+                                     const int *spatial_dims,
+                                     const T *spatial_std,
+                                     const T *color_std){
 
-    int num_dims = n_sdims + reference_channels;
+    int num_dims = num_spatial_dims + num_reference_channels;
 
-    for(int idx = 0; idx < num_super_pixels; idx++){
+    for(int idx = 0; idx < num_hypervoxels; idx++){
         int divisor = 1;
-        for(int sdim = n_sdims - 1; sdim >= 0; sdim--){
-            positions[num_dims * idx + sdim] = ((idx / divisor) % sdims[sdim]) / *spatial_std;
-            divisor *= sdims[sdim];
+        for(int spatial_dim = num_spatial_dims - 1; spatial_dim >= 0; spatial_dim--){
+            position_vectors[num_dims * idx + spatial_dim] =
+                    ((idx / divisor) % spatial_dims[spatial_dim]) / *spatial_std;
+            divisor *= spatial_dims[spatial_dim];
         }
-        for(int channel = 0; channel < reference_channels; channel++){
-            positions[num_dims * idx + n_sdims + channel] = reference[idx * reference_channels + channel] / *feature_std;
+        for(int channel = 0; channel < num_reference_channels; channel++){
+            position_vectors[num_dims * idx + num_spatial_dims + channel] =
+                    reference_image[idx * num_reference_channels + channel] / *color_std;
         }
     }
 };

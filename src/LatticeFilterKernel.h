@@ -25,69 +25,45 @@ SOFTWARE.*/
 
 using namespace tensorflow;
 
-template<typename Device, typename T>
+template<typename Device, typename T, int pd, int vd>
 struct LatticeFilter {
-    void operator()(const Device &d,
-                    OpKernelContext *context,
-                    T *output,
-                    const T *input,
-                    const T *positions,
-                    int num_super_pixels,
-                    int pd,
-                    int vd,
-                    bool reverse);
-};
 
+    LatticeFilter(OpKernelContext *context,
+                  int num_hypervoxels,
+                  int num_input_channels,
+                  int num_spatial_dims,
+                  int num_reference_channels,
+                  const T *spatial_std,
+                  const T *color_std,
+                  bool reverse);
 
-template<typename Device, typename T>
-struct ComputeKernel {
-    void operator()(const Device &d,
-                    OpKernelContext *context,
+    void operator()(T* output_image,
+                    const T *input_image,
                     const T *reference_image,
-                    T *positions,
-                    int num_super_pixels,
-                    int n_spatial_dims,
-                    int *spatial_dims,
-                    int n_reference_channels,
-                    const T *spatial_std,
-                    const T *features_std);
+                    int *spatial_dims);
+private:
+    OpKernelContext* context;
+    int num_hypervoxels;
+    int num_input_channels;
+    int num_spatial_dims;
+    int num_reference_channels;
+    const T *spatial_std;
+    const T *color_std;
+    bool reverse;
+
 };
-
-
 
 #if GOOGLE_CUDA
 
-// Partially specialize functor for GpuDevice.
-template<typename T>
-struct LatticeFilter<Eigen::GpuDevice, T> {
-    void operator()(const Eigen::GpuDevice &d,
-                    OpKernelContext *context,
-                    T *output,
-                    const T *input,
-                    const T *positions,
-                    int num_super_pixels,
-                    int pd,
-                    int vd,
-                    bool reverse);
-};
-
-template<typename  T>
-struct ComputeKernel<Eigen::GpuDevice, T> {
-    void operator()(const Eigen::GpuDevice &d,
-                    OpKernelContext *context,
+/*// Partially specialize functor for GpuDevice.
+template<typename T, int pd, int vd>
+struct LatticeFilter<Eigen::GpuDevice, T, pd, vd> {
+    void operator()(T* output_image,
+                    const T *input_image,
                     const T *reference_image,
-                    T *positions,
-                    int num_super_pixels,
-                    int n_spatial_dims,
-                    int *spatial_dims,
-                    int n_reference_channels,
-                    const T *spatial_std,
-                    const T *features_std);
-};
-
-
+                    int *spatial_dims);
+};*/
 
 #endif
-
 
 #endif //PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H

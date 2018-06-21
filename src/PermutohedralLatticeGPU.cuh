@@ -150,7 +150,7 @@ template<typename T> struct MatrixEntry {
 
 template<typename T, int pd, int vd>
 __global__ static void createLattice(const int n,
-                                     const T *positions,
+                                     const T *position_vectors,
                                      const T *scaleFactor,
                                      MatrixEntry<T> *matrix,
                                      HashTableGPU<T, pd, vd> table) {
@@ -160,16 +160,16 @@ __global__ static void createLattice(const int n,
         return;
 
     T elevated[pd + 1];
-    const T *position = positions + idx * pd;
+    const T *position_vector = position_vectors + idx * pd;
     int rem0[pd + 1];
     int rank[pd + 1];
 
-    // embed position vector into the hyperplane
-    // first rotate position into the (pd+1)-dimensional hyperplane
+    // embed position_vector vector into the hyperplane
+    // first rotate position_vector into the (pd+1)-dimensional hyperplane
     // sm contains the sum of 1..n of our feature vector
     T sm = 0;
     for (int i = pd; i > 0; i--) {
-        T cf = position[i - 1] * scaleFactor[i - 1];
+        T cf = position_vector[i - 1] * scaleFactor[i - 1];
         elevated[i] = sm - i * cf;
         sm += cf;
     }
@@ -193,7 +193,7 @@ __global__ static void createLattice(const int n,
     sum /= pd + 1;
 
 
-    // Find the simplex we are in and store it in rank (where rank describes what position coordinate i has in the sorted order of the features values)
+    // Find the simplex we are in and store it in rank (where rank describes what position_vector coordinate i has in the sorted order of the features values)
     for (int i = 0; i <= pd; i++)
         rank[i] = 0;
     for (int i = 0; i < pd; i++) {
@@ -451,14 +451,14 @@ public:
     }
 
     // values and position must already be device pointers
-    void filter(T* output, const T* inputs, const T*  positions, bool reverse){
+    void filter(T* output, const T* inputs, const T*  position_vectors, bool reverse){
 
         dim3 blocks((n - 1) / BLOCK_SIZE + 1, 1, 1);
         dim3 blockSize(BLOCK_SIZE, 1, 1);
         int cleanBlockSize = 128;
         dim3 cleanBlocks((n - 1) / cleanBlockSize + 1, 2 * (pd + 1), 1);
 
-        createLattice<T, pd, vd> <<<blocks, blockSize, 0, stream>>>(n, positions, scaleFactor, matrix, hashTable);
+        createLattice<T, pd, vd> <<<blocks, blockSize, 0, stream>>>(n, position_vectors, scaleFactor, matrix, hashTable);
         cudaErrorCheck();
 
         cleanHashTable<T, pd, vd> <<<cleanBlocks, cleanBlockSize, 0, stream>>>(2 * n * (pd + 1), hashTable);
@@ -480,29 +480,60 @@ public:
 };
 
 template<typename T>
-__global__ static void compute_kernel(const T * reference,
-                                      T * positions,
-                                      int num_super_pixels,
-                                      int reference_channels,
-                                      int n_sdims,
-                                      const int *sdims,
-                                      const T* spatial_std,
-                                      const T* feature_std){
+__global__ static void compute_position_vectors(const T *reference_image,
+                                                T *position_vectors,
+                                                int num_hypervoxels,
+                                                int num_reference_channels,
+                                                int num_spatial_dims,
+                                                const int *spatial_dims,
+                                                const T *spatial_std,
+                                                const T *color_std){
 
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx >= num_super_pixels)
+    if (idx >= num_hypervoxels)
         return;
 
-    int num_dims = n_sdims + reference_channels;
+    int num_dims = num_spatial_dims + num_reference_channels;
     int divisor = 1;
-    for(int sdim = n_sdims - 1; sdim >= 0; sdim--){
-        positions[num_dims * idx + sdim] = ((idx / divisor) % sdims[sdim]) / *spatial_std;
-        divisor *= sdims[sdim];
+    for(int spatial_dim = num_spatial_dims - 1; spatial_dim >= 0; spatial_dim--){
+        position_vectors[num_dims * idx + spatial_dim] = ((idx / divisor) % spatial_dims[spatial_dim]) / *spatial_std;
+        divisor *= spatial_dims[spatial_dim];
     }
 
-    for(int channel = 0; channel < reference_channels; channel++){
-        positions[num_dims * idx + n_sdims + channel] = reference[idx * reference_channels + channel] / *feature_std;
+    for(int channel = 0; channel < num_reference_channels; channel++){
+        position_vectors[num_dims * idx + num_spatial_dims + channel] =
+                reference_image[idx * num_reference_channels + channel] / *color_std;
     }
 }
+
+/*
+template<typename T>
+__global__ static void compute_partial_position_vectors(const T *reference_image,
+                                                        T *spatial_position_vectors,
+                                                        T *color_position_vectors,
+                                                        int num_hypervoxels,
+                                                        int num_reference_channels,
+                                                        int num_spatial_dims,
+                                                        const int *spatial_dims,
+                                                        const T *spatial_std,
+                                                        const T *color_std){
+
+    const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= num_hypervoxels)
+        return;
+
+    int divisor = 1;
+    for(int spatial_dim = num_spatial_dims - 1; spatial_dim >= 0; spatial_dim--){
+        spatial_position_vectors[num_spatial_dims * idx + spatial_dim] = ((idx / divisor) % spatial_dims[spatial_dim]) / *spatial_std;
+        divisor *= spatial_dims[spatial_dim];
+    }
+    int i;
+    for(int channel = 0; channel < num_reference_channels; channel++){
+        i = num_reference_channels * idx + channel;
+        color_position_vectors[i] = reference_image[i] / *color_std;
+    }
+}
+*/
+
 
 #endif //PERMUTOHEDRAL_CU

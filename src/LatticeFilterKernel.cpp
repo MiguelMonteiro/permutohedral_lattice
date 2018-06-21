@@ -24,13 +24,68 @@ SOFTWARE.*/
 
 using namespace tensorflow;
 
-#include "tensorflow/core/framework/op.h"
+//#include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 
-REGISTER_OP("LatticeFilter")
+using CPUDevice = Eigen::ThreadPoolDevice;
+using GPUDevice = Eigen::GpuDevice;
+
+template <typename T, int pd, int vd>
+struct LatticeFilter<CPUDevice, T, pd, vd> {
+
+    LatticeFilter(OpKernelContext *context,
+                  int num_hypervoxels,
+                  int num_input_channels,
+                  int num_spatial_dims,
+                  int num_reference_channels,
+                  const T *spatial_std,
+                  const T *color_std,
+                  bool reverse): context(context),
+                                 num_hypervoxels(num_hypervoxels),
+                                 num_spatial_dims(num_spatial_dims),
+                                 num_input_channels(num_input_channels),
+                                 num_reference_channels(num_reference_channels),
+                                 spatial_std(spatial_std),
+                                 color_std(color_std),
+                                 reverse(reverse){};
+
+    void operator()(T* output_image,
+                    const T *input_image,
+                    const T *reference_image,
+                    int *spatial_dims){
+        int pd_ = num_reference_channels + num_spatial_dims;
+        int vd_ = num_input_channels + 1;
+        assert(pd == pd_ && vd == vd_);
+
+        auto position_vectors = new T[num_hypervoxels * pd];
+        compute_position_vectors(reference_image,
+                                 position_vectors,
+                                 num_hypervoxels,
+                                 num_reference_channels,
+                                 num_spatial_dims,
+                                 spatial_dims,
+                                 spatial_std,
+                                 color_std);
+
+        auto lattice = PermutohedralLatticeCPU<T>(pd, vd, num_hypervoxels);
+        lattice.filter(output_image, input_image, position_vectors, reverse);
+    }
+
+private:
+    OpKernelContext* context;
+    int num_hypervoxels;
+    int num_input_channels;
+    int num_spatial_dims;
+    int num_reference_channels;
+    const T *spatial_std;
+    const T *color_std;
+    bool reverse;
+
+};
+
+REGISTER_OP("BilateralFilter")
         .Attr("T: {float32, float64}")
         .Attr("reverse: bool = false")
-        .Attr("bilateral: bool = true")
         .Input("input_image: T")
         .Input("reference_image: T")
         .Input("theta_spatial: T")
@@ -41,165 +96,173 @@ REGISTER_OP("LatticeFilter")
             return Status::OK();
         });
 
-
-using CPUDevice = Eigen::ThreadPoolDevice;
-using GPUDevice = Eigen::GpuDevice;
-
-
-// CPU specialization of actual computation.
-template<typename T>
-struct ComputeKernel<CPUDevice, T>{
-    void operator()(const CPUDevice &d,
-                    OpKernelContext *context,
-                    const T *reference_image,
-                    T *positions,
-                    int num_super_pixels,
-                    int n_spatial_dims,
-                    int *spatial_dims,
-                    int n_reference_channels,
-                    const T *spatial_std,
-                    const T *features_std){
-        compute_kernel_cpu<T>(reference_image, positions, num_super_pixels, n_reference_channels, n_spatial_dims,
-                              spatial_dims, spatial_std, features_std);
-    }
-};
-
-template <typename T>
-struct LatticeFilter<CPUDevice, T>{
-    void operator()(const CPUDevice &d,
-                    OpKernelContext *context,
-                    T *output,
-                    const T *input,
-                    const T *positions,
-                    int num_super_pixels,
-                    int pd,
-                    int vd,
-                    bool reverse){
-        auto lattice = PermutohedralLatticeCPU<T>(pd, vd, num_super_pixels);
-        lattice.filter(output, input, positions, reverse);
-    }
-};
-
-
 // OpKernel definition.
 // template parameter <T> is the datatype of the tensors.
-template <typename Device, typename T>
-class LatticeFilterOp : public OpKernel {
+template <typename Device, typename T, int pd, int vd>
+class BilateralFilterOp : public OpKernel {
 public:
-    explicit LatticeFilterOp(OpKernelConstruction* context) : OpKernel(context) {
+    explicit BilateralFilterOp(OpKernelConstruction* context) : OpKernel(context) {
         OP_REQUIRES_OK(context, context->GetAttr("reverse", &reverse));
-        OP_REQUIRES_OK(context, context->GetAttr("bilateral", &bilateral));
     }
 
     void Compute(OpKernelContext* context) override {
-        // Grab the input tensor
-        const Tensor& input_tensor = context->input(0);
+        // Grab the input tensors
+        const Tensor& input_image_tensor = context->input(0);
+        OP_REQUIRES(context, input_image_tensor.NumElements() <= tensorflow::kint32max,
+                    errors::InvalidArgument("Too many elements in tensor"));
         const Tensor& reference_image_tensor = context->input(1);
+        OP_REQUIRES(context, reference_image_tensor.NumElements() <= tensorflow::kint32max,
+                    errors::InvalidArgument("Too many elements in tensor"));
+        assert(reference_image_tensor.shape() == input_image_tensor.shape());
         const Tensor& theta_spatial = context->input(2);
+        assert(theta_spatial.dims() == 0);
         const Tensor& theta_color = context->input(3);
-        //assert(theta_alpha.dims() == 0);
-        //assert(theta_beta.dims() == 0);
-        //assert(theta_gamma.dims() == 0);
+        assert(theta_color.dims() == 0);
 
         // Create an output tensor
         Tensor* output_tensor = nullptr;
-        OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(), &output_tensor));
-
-        // Do the computation.
-        OP_REQUIRES(context, input_tensor.NumElements() <= tensorflow::kint32max,
-                    errors::InvalidArgument("Too many elements in tensor"));
+        OP_REQUIRES_OK(context, context->allocate_output(0, input_image_tensor.shape(), &output_tensor));
 
         // calculate dimensions; dimension 0 is batch; last dimension is channel
-        int rank = input_tensor.dims();
-        int n_spatial_dims = rank - 2;
+        auto num_hypervoxels = static_cast<int>(input_image_tensor.shape().num_elements());
+        int rank = input_image_tensor.dims();
+        int num_spatial_dims = rank - 2;
+        auto batch_size = static_cast<int>(input_image_tensor.dim_size(0));
+        auto num_input_channels = static_cast<int>(input_image_tensor.dim_size(rank - 1));
+        auto num_reference_channels = static_cast<int>(reference_image_tensor.dim_size(rank - 1));
+        auto spatial_dims = new int[num_spatial_dims];
+        for (int i = 0; i < num_spatial_dims; i++)
+            spatial_dims[i] = static_cast<int>(input_image_tensor.dim_size(i + 1));
 
-        auto batch_size = static_cast<int>(input_tensor.dim_size(0));
-        auto n_input_channels = static_cast<int>(input_tensor.dim_size(rank - 1));
-        auto spatial_dims = new int[n_spatial_dims];
-
-        int num_super_pixels{1};
-        for (int i = 0; i < n_spatial_dims; i++){
-            auto dim_size = static_cast<int>(input_tensor.dim_size(i + 1));
-            num_super_pixels *= dim_size;
-            spatial_dims[i] = dim_size;
-        }
-
-        vd = n_input_channels + 1;
-
-        int n_reference_channels;
         const T *spatial_std = &(theta_spatial.flat<T>().data()[0]);
-        const T *features_std = nullptr;
+        const T* color_std = &(theta_color.flat<T>().data()[0]);
 
-        if(bilateral){
-            assert(reference_image_tensor.dims() == rank);
-            n_reference_channels = static_cast<int>(reference_image_tensor.dim_size(rank - 1));
-            pd = n_reference_channels + n_spatial_dims;
-            features_std = &(theta_color.flat<T>().data()[0]);
-        }else{
-            pd = n_spatial_dims;
-            n_reference_channels = 0; //set to zero so ComputeKernel does not use reference image channels
-        }
-
-        // Allocate kernel positions and calculate them
-        Tensor positions;
-        OP_REQUIRES_OK(context, context->allocate_temp(DataTypeToEnum<T>::v(),
-                                                       TensorShape({batch_size * num_super_pixels * pd}),
-                                                       &positions));
-
-        auto allocator = DeviceMemoryAllocator(context);
-
+        auto filter = LatticeFilter<Device, T, pd, vd>(context,
+                                                       num_hypervoxels,
+                                                       num_input_channels,
+                                                       num_spatial_dims,
+                                                       num_reference_channels,
+                                                       spatial_std,
+                                                       color_std,
+                                                       reverse);
         for(int b=0; b < batch_size; b++){
-
-            auto ref_ptr = &(reference_image_tensor.flat<T>().data()[b * num_super_pixels * n_reference_channels]);
-            auto pos_ptr = &(positions.flat<T>().data()[b * num_super_pixels * pd]);
-            auto in_ptr = &(input_tensor.flat<T>().data()[b * num_super_pixels * n_input_channels]);
-            auto out_ptr = &(output_tensor->flat<T>().data()[b * num_super_pixels * n_input_channels]);
-
-            ComputeKernel<Device, T>()(context->eigen_device<Device>(),
-                                       context,
-                                       ref_ptr,
-                                       pos_ptr,
-                                       num_super_pixels,
-                                       n_spatial_dims,
-                                       spatial_dims,
-                                       n_reference_channels,
-                                       spatial_std,
-                                       features_std);
-
-            LatticeFilter<Device, T>()(context->eigen_device<Device>(),
-                                       context,
-                                       out_ptr,
-                                       in_ptr,
-                                       pos_ptr,
-                                       num_super_pixels,
-                                       pd,
-                                       vd,
-                                       reverse);
+            filter(&(output_tensor->flat<T>().data()[b * num_hypervoxels * num_input_channels]),
+                   &(input_image_tensor.flat<T>().data()[b * num_hypervoxels * num_input_channels]),
+                   &(reference_image_tensor.flat<T>().data()[b * num_hypervoxels * num_reference_channels]),
+                   spatial_dims);
         }
         delete[](spatial_dims);
     }
 
 private:
     bool reverse;
-    bool bilateral;
-    int pd;
-    int vd;
 };
 
-// Register the CPU kernels.
-#define REGISTER_CPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), LatticeFilterOp<CPUDevice, T>);
+REGISTER_OP("GaussianFilter")
+        .Attr("T: {float32, float64}")
+        .Attr("reverse: bool = false")
+        .Input("input_image: T")
+        .Input("theta_spatial: T")
+        .Output("output: T")
+        .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+            c->set_output(0, c->input(0));
+            return Status::OK();
+        });
 
-REGISTER_CPU(float);
-REGISTER_CPU(double);
+// OpKernel definition.
+// template parameter <T> is the datatype of the tensors.
+template <typename Device, typename T, int pd, int vd>
+class GaussianFilterOp : public OpKernel {
+public:
+    explicit GaussianFilterOp(OpKernelConstruction* context) : OpKernel(context) {
+        OP_REQUIRES_OK(context, context->GetAttr("reverse", &reverse));
+    }
+
+    void Compute(OpKernelContext* context) override {
+        // Grab the input tensors
+        const Tensor& input_image_tensor = context->input(0);
+        OP_REQUIRES(context, input_image_tensor.NumElements() <= tensorflow::kint32max,
+                    errors::InvalidArgument("Too many elements in tensor"));
+
+        const Tensor& theta_spatial = context->input(1);
+        assert(theta_spatial.dims() == 0);
+
+        // Create an output tensor
+        Tensor* output_tensor = nullptr;
+        OP_REQUIRES_OK(context, context->allocate_output(0, input_image_tensor.shape(), &output_tensor));
+
+        // calculate dimensions; dimension 0 is batch; last dimension is channel
+        auto num_hypervoxels = static_cast<int>(input_image_tensor.shape().num_elements());
+        int rank = input_image_tensor.dims();
+        int num_spatial_dims = rank - 2;
+        auto batch_size = static_cast<int>(input_image_tensor.dim_size(0));
+        auto num_input_channels = static_cast<int>(input_image_tensor.dim_size(rank - 1));
+        auto spatial_dims = new int[num_spatial_dims];
+        for (int i = 0; i < num_spatial_dims; i++)
+            spatial_dims[i] = static_cast<int>(input_image_tensor.dim_size(i + 1));
+
+        const T *spatial_std = &(theta_spatial.flat<T>().data()[0]);
+
+        auto filter = LatticeFilter<Device, T, pd, vd>(context,
+                                                       num_hypervoxels,
+                                                       num_input_channels,
+                                                       num_spatial_dims,
+                                                       0,
+                                                       spatial_std,
+                                                       nullptr,
+                                                       reverse);
+        for(int b=0; b < batch_size; b++){
+            filter(&(output_tensor->flat<T>().data()[b * num_hypervoxels * num_input_channels]),
+                   &(input_image_tensor.flat<T>().data()[b * num_hypervoxels * num_input_channels]),
+                   nullptr,
+                   spatial_dims);
+        }
+        delete[](spatial_dims);
+    }
+
+private:
+    bool reverse;
+};
+
+#ifndef SPATIAL_DIMS
+#define SPATIAL_DIMS 2
+#endif
+#ifndef INPUT_CHANNELS
+#define INPUT_CHANNELS 3
+#endif
+#ifndef REFERENCE_CHANNELS
+#define REFERENCE_CHANNELS 3
+#endif
+
+//SPATIAL_DIMS + REFERENCE_CHANNELS INPUT_CHANNELS + 1
+// Register the CPU kernels.
+#define REGISTER_BILATERAL_CPU(T) REGISTER_KERNEL_BUILDER(Name("BilateralFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), BilateralFilterOp<CPUDevice, T, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>);
+#define REGISTER_GAUSSIAN_CPU(T) REGISTER_KERNEL_BUILDER(Name("GaussianFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), GaussianFilterOp<CPUDevice, T, SPATIAL_DIMS, INPUT_CHANNELS + 1>);
+
+REGISTER_BILATERAL_CPU(float);
+REGISTER_BILATERAL_CPU(double);
+REGISTER_GAUSSIAN_CPU(float);
+REGISTER_GAUSSIAN_CPU(double);
+
 
 // Register the GPU kernels.
 #ifdef GOOGLE_CUDA
 /* Declare explicit instantiations in kernel_example.cu.cc. */
-extern template struct LatticeFilter<GPUDevice, float>;
-extern template struct LatticeFilter<GPUDevice, double>;
+/*extern template struct LatticeFilter<GPUDevice, float>;
+extern template struct LatticeFilter<GPUDevice, double>*/
+/* Declare explicit instantiations in kernel_example.cu.cc. *//*
+extern template struct LatticeFilter<GPUDevice, float, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>;
+extern template struct LatticeFilter<GPUDevice, double, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>;
+extern template struct LatticeFilter<GPUDevice, float, SPATIAL_DIMS, INPUT_CHANNELS + 1>;
+extern template struct LatticeFilter<GPUDevice, double, SPATIAL_DIMS, INPUT_CHANNELS + 1>;*/
 
-#define REGISTER_GPU(T) REGISTER_KERNEL_BUILDER(Name("LatticeFilter").Device(DEVICE_GPU).TypeConstraint<T>("T"), LatticeFilterOp<GPUDevice, T>);
+#define REGISTER_BILATERAL_GPU(T) REGISTER_KERNEL_BUILDER(Name("BilateralFilter").Device(DEVICE_GPU).TypeConstraint<T>("T"), BilateralFilterOp<GPUDevice, T, SPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1>);
+#define REGISTER_GAUSSIAN_GPU(T) REGISTER_KERNEL_BUILDER(Name("GaussianFilter").Device(DEVICE_GPU).TypeConstraint<T>("T"), GaussianFilterOp<GPUDevice, T, SPATIAL_DIMS, INPUT_CHANNELS + 1>);
 
-REGISTER_GPU(float);
-REGISTER_GPU(double);
-#endif  // GOOGLE_CUDA
+REGISTER_BILATERAL_GPU(float);
+REGISTER_BILATERAL_GPU(double);
+REGISTER_GAUSSIAN_GPU(float);
+REGISTER_GAUSSIAN_GPU(double);
+
+
+#endif  // GOOGLE_CUDASPATIAL_DIMS + REFERENCE_CHANNELS, INPUT_CHANNELS + 1 ; SPATIAL_DIMS , INPUT_CHANNELS + 1
