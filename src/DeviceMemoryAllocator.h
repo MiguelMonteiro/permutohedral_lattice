@@ -36,16 +36,18 @@ class DeviceMemoryAllocator {
 
     OpKernelContext* context;
 
-    //allocator has a capacity to store 100 tensors
-    Tensor tensors[10];
+    //allocator has a capacity to store 100 tensors, change if needed
+    Tensor tensors[100];
     int filled;
 
 public:
 
-    DeviceMemoryAllocator(OpKernelContext* context_): context(context_), filled(0){}
+    DeviceMemoryAllocator(OpKernelContext* context): context(context), filled(0){}
 
     template<typename t>
     void allocate_device_memory(void ** ptr_address, int num_elements){
+        if (filled == 100)
+            LOG(FATAL) << "Alocator cannot fit any more tensors\n";
         DataType dataType = DT_UINT8;
         num_elements *= sizeof(t);
         auto tensor_ptr = &(tensors[filled]);

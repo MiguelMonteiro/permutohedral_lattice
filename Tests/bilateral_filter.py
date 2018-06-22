@@ -23,16 +23,12 @@ with tf.device('gpu:0'):
     tf_input_batch = tf.stack([tf_input_image, tf_input_image])
     tf_reference_batch = tf.stack([tf_reference_image, tf_reference_image])
 
-    output = module.bilateral_filter(tf_input_batch,
-                                    tf_reference_batch,
-                                    theta_spatial=theta_alpha,
-                                    theta_color=theta_beta)
+    output = module.bilateral_filter(tf_input_batch, tf_reference_batch, theta_alpha, theta_beta)
     init_op = tf.global_variables_initializer()
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         _ = sess.run(init_op)
         o = np.round(sess.run(output) * 255).astype(np.uint8)
-
     im = Image.fromarray(o[0])
-    im.save('t1.bmp')
+    im.save('z1.bmp')
     im = Image.fromarray(o[1])
-    im.save('t2.bmp')
+    im.save('z2.bmp')

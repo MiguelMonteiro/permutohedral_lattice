@@ -33,37 +33,55 @@ struct LatticeFilter {
                   int num_input_channels,
                   int num_spatial_dims,
                   int num_reference_channels,
+                  int *host_spatial_dims,
                   const T *spatial_std,
                   const T *color_std,
                   bool reverse);
 
-    void operator()(T* output_image,
-                    const T *input_image,
-                    const T *reference_image,
-                    int *spatial_dims);
+    void operator()(T* output_image, const T *input_image, const T *reference_image);
+
 private:
-    OpKernelContext* context;
+    OpKernelContext *context;
     int num_hypervoxels;
     int num_input_channels;
     int num_spatial_dims;
     int num_reference_channels;
-    const T *spatial_std;
-    const T *color_std;
+    int *spatial_dims;
+    const T* spatial_std;
+    const T* color_std;
     bool reverse;
-
+    DeviceMemoryAllocator allocator;
+    T * position_vectors;
 };
 
-#if GOOGLE_CUDA
 
-/*// Partially specialize functor for GpuDevice.
-template<typename T, int pd, int vd>
-struct LatticeFilter<Eigen::GpuDevice, T, pd, vd> {
-    void operator()(T* output_image,
-                    const T *input_image,
-                    const T *reference_image,
-                    int *spatial_dims);
-};*/
+template<typename Device, typename T, int pd, int vd>
+struct LatticeFilterDiff {
 
-#endif
+    LatticeFilterDiff(OpKernelContext *context,
+                  int num_hypervoxels,
+                  int num_input_channels,
+                  int num_spatial_dims,
+                  int num_reference_channels,
+                  int *host_spatial_dims,
+                  const T *spatial_std,
+                  const T *color_std,
+                  bool reverse);
+
+    void operator()(T* output_image, const T *input_image, const T *reference_image);
+
+private:
+    OpKernelContext *context;
+    int num_hypervoxels;
+    int num_input_channels;
+    int num_spatial_dims;
+    int num_reference_channels;
+    int *spatial_dims;
+    const T* spatial_std;
+    const T* color_std;
+    bool reverse;
+    DeviceMemoryAllocator allocator;
+    T * position_vectors;
+};
 
 #endif //PERMUTOHEDRAL_LATTICE_BILATERALKERNEL_H
