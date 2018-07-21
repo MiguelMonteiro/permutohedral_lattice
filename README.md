@@ -1,5 +1,7 @@
 This code implements the Permutohedral Lattice  for high dimensional filtering.
 Read the original [paper.]( https://graphics.stanford.edu/papers/permutohedral/)
+If you use this work please consider citing our [paper](https://arxiv.org/abs/1807.07464) in addition to the original one.
+
 
 The code contains:
 - A CPU implementation (C++);
