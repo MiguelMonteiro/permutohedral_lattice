@@ -87,15 +87,11 @@ public:
 };
 #else
 
-
 class DeviceMemoryAllocator {
 
     //allocator has a capacity to store 10 pointers
     void** ptr_addresses[10];
     int filled;
-
-    // function for debugging the cuda calls
-
 
 public:
 
@@ -126,3 +122,4 @@ public:
 #endif //GOOGLE_CUDA
 
 #endif //PERMUTOHEDRAL_LATTICE_DEVICEMEMORYALLOCATOR_H
+
