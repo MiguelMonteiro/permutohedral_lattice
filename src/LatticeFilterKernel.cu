@@ -41,7 +41,6 @@ using namespace tensorflow;
 
 using GPUDevice = Eigen::GpuDevice;
 
-
 template<typename T>
 void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
                                              OpKernelContext* context,
@@ -58,7 +57,7 @@ void ComputeKernel<GPUDevice, T>::operator()(const GPUDevice& d,
 
     int* spatial_dims_gpu;
     allocator.allocate_device_memory<int>((void**)&spatial_dims_gpu, n_spatial_dims);
-    cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice);
+    gpuErrchk(cudaMemcpy(spatial_dims_gpu, spatial_dims, n_spatial_dims*sizeof(int), cudaMemcpyHostToDevice));
 
     dim3 blocks((num_super_pixels - 1) / BLOCK_SIZE + 1, 1, 1);
     dim3 blockSize(BLOCK_SIZE, 1, 1);
