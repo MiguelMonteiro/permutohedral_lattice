@@ -5,12 +5,12 @@ mkdir build_dir
 cd build_dir
 
 CUDA_COMPILER=/usr/local/cuda/bin/nvcc
-CXX_COMPILER=/usr/bin/g++-4.8
+CXX_COMPILER=/usr/local/bin/g++-4.8
 
 SPATIAL_DIMS=2
 INPUT_CHANNELS=3
 REFERENCE_CHANNELS=3
-MAKE_TESTS=True
+MAKE_TESTS=False
 
 cmake -DCMAKE_BUILD_TYPE=Debug -D CMAKE_CUDA_COMPILER=${CUDA_COMPILER} \
                                -D CMAKE_CXX_COMPILER=${CXX_COMPILER} \
