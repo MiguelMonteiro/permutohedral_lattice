@@ -11,10 +11,9 @@ if(UNIX AND NOT APPLE)
 endif()
 
 #just needed for Clion code indexing
-include_directories(/usr/local/cuda/include/)
-
-execute_process(COMMAND python2 -c "import tensorflow as tf;  print(tf.sysconfig.get_include())" OUTPUT_VARIABLE TF_INC)
-execute_process(COMMAND python2 -c "import tensorflow as tf; print(tf.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIB)
+include_directories(${CUDA_INCLUDE})
+execute_process(COMMAND python -c "import tensorflow as tf;  print(tf.sysconfig.get_include())" OUTPUT_VARIABLE TF_INC)
+execute_process(COMMAND python -c "import tensorflow as tf; print(tf.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIB)
 string(REGEX REPLACE "\n$" "" TF_INC "${TF_INC}")
 string(REGEX REPLACE "\n$" "" TF_LIB "${TF_LIB}")
 include_directories(${TF_INC} ${TF_INC}/external/nsync/public)
@@ -34,6 +33,9 @@ target_compile_options(lattice_filter PUBLIC "-D GOOGLE_CUDA=1" "-D GLIBCXX_USE_
 target_compile_options(lattice_filter PUBLIC "-D SPATIAL_DIMS=${SPATIAL_DIMS}")
 target_compile_options(lattice_filter PUBLIC "-D INPUT_CHANNELS=${INPUT_CHANNELS}")
 target_compile_options(lattice_filter PUBLIC "-D REFERENCE_CHANNELS=${REFERENCE_CHANNELS}")
+# workaround because of tensorflow bug, should remove once they fixed it
+target_compile_options(lattice_filter PUBLIC "-DNDEBUG")
+
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 5.0)
     target_compile_options(lattice_filter PUBLIC "-D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
